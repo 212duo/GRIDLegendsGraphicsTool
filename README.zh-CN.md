@@ -1,6 +1,6 @@
 # GRID Legends 画质工具
 
-[English](README.en.md)
+[![English](https://img.shields.io/badge/English-README-blue)](README.en.md)
 
 这是一个用于修改 GRID Legends 安卓版画质配置的 Android 工具，使用 Kotlin 和 Jetpack Compose 开发。
 
