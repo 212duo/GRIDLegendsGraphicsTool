@@ -1,6 +1,5 @@
 package com.gridlegends.graphicsassistant.ui.screens
 
-import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
@@ -11,16 +10,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -29,9 +27,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gridlegends.graphicsassistant.ui.theme.*
 
-/**
- * 关于页面
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AboutScreen(
@@ -45,7 +40,6 @@ fun AboutScreen(
             .background(DarkBackground)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // 顶部栏
             TopAppBar(
                 title = { Text("关于") },
                 navigationIcon = {
@@ -72,7 +66,6 @@ fun AboutScreen(
             ) {
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // App 图标
                 Box(
                     modifier = Modifier
                         .size(80.dp)
@@ -81,14 +74,15 @@ fun AboutScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "🏁",
-                        fontSize = 40.sp
+                        text = "GL",
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = NeonCyan
                     )
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // App 名称
                 Text(
                     text = "GRID Legends 画质助手",
                     fontSize = 22.sp,
@@ -97,7 +91,7 @@ fun AboutScreen(
                 )
 
                 Text(
-                    text = "v1.0.0",
+                    text = "v1.1.1",
                     fontSize = 14.sp,
                     color = TextSecondary
                 )
@@ -105,7 +99,7 @@ fun AboutScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "突破游戏画质菜单限制\n精细调节 25+ 项画面参数",
+                    text = "用于读取、备份和修改 GRID Legends 安卓版画质配置",
                     fontSize = 14.sp,
                     color = TextSecondary,
                     textAlign = TextAlign.Center
@@ -113,137 +107,85 @@ fun AboutScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // 功能介绍卡片
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = DarkSurface),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "功能特性",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = NeonCyan
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        FeatureItem("🖥️ 显示设置", "渲染分辨率、帧率目标、垂直同步")
-                        FeatureItem("🎨 画面质量", "纹理、阴影、抗锯齿、各向异性过滤")
-                        FeatureItem("✨ 后处理效果", "运动模糊、泛光、景深、镜头光晕、环境光遮蔽")
-                        FeatureItem("🪞 反射", "车身反射、屏幕空间反射")
-                        FeatureItem("🏁 赛道细节", "车辆/赛道精度、观众密度、粒子效果、绘制距离")
-                    }
+                InfoCard(title = "主要功能", titleColor = NeonCyan) {
+                    FeatureItem("配置读写", "读取游戏 preferences 文件，并尽量保留未管理的原始字段")
+                    FeatureItem("画质预设", "内置低配、平衡、高配、2K、HDR 等多组预设")
+                    FeatureItem("精细调整", "支持帧率、分辨率、纹理、阴影、反射、后处理等参数")
+                    FeatureItem("访问方式", "Android 11-15 使用 SAF，较新系统可使用 Shizuku")
+                    FeatureItem("自动备份", "保存前会创建 preferences_backup_* 备份文件")
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // 开发者信息卡片
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = DarkSurface),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "开发者",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = NeonCyan
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
+                InfoCard(title = "项目链接", titleColor = NeonCyan) {
+                    LinkItem(
+                        icon = Icons.Default.Code,
+                        title = "GitHub",
+                        subtitle = "github.com/212duo",
+                        onClick = {
+                            context.startActivity(
+                                Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/212duo"))
+                            )
+                        }
+                    )
 
-                        // GitHub 链接
-                        LinkItem(
-                            icon = Icons.Default.Code,
-                            title = "GitHub",
-                            subtitle = "github.com/212duo",
-                            onClick = {
-                                val intent = Intent(
-                                    Intent.ACTION_VIEW,
-                                    Uri.parse("https://github.com/212duo")
-                                )
-                                context.startActivity(intent)
-                            }
-                        )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        color = DarkSurfaceVariant
+                    )
 
-                        HorizontalDivider(
-                            modifier = Modifier.padding(vertical = 8.dp),
-                            color = DarkSurfaceVariant
-                        )
-
-                        // 项目仓库
-                        LinkItem(
-                            icon = Icons.Default.Star,
-                            title = "项目仓库",
-                            subtitle = "GRIDLegendsGraphicsTool",
-                            onClick = {
-                                val intent = Intent(
+                    LinkItem(
+                        icon = Icons.Default.Star,
+                        title = "项目仓库",
+                        subtitle = "GRIDLegendsGraphicsTool",
+                        onClick = {
+                            context.startActivity(
+                                Intent(
                                     Intent.ACTION_VIEW,
                                     Uri.parse("https://github.com/212duo/GRIDLegendsGraphicsTool")
                                 )
-                                context.startActivity(intent)
-                            }
-                        )
+                            )
+                        }
+                    )
 
-                        HorizontalDivider(
-                            modifier = Modifier.padding(vertical = 8.dp),
-                            color = DarkSurfaceVariant
-                        )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        color = DarkSurfaceVariant
+                    )
 
-                        // 提交 Issue
-                        LinkItem(
-                            icon = Icons.Default.BugReport,
-                            title = "反馈问题",
-                            subtitle = "提交 Bug 或建议",
-                            onClick = {
-                                val intent = Intent(
+                    LinkItem(
+                        icon = Icons.Default.BugReport,
+                        title = "反馈问题",
+                        subtitle = "提交 Bug 或功能建议",
+                        onClick = {
+                            context.startActivity(
+                                Intent(
                                     Intent.ACTION_VIEW,
                                     Uri.parse("https://github.com/212duo/GRIDLegendsGraphicsTool/issues")
                                 )
-                                context.startActivity(intent)
-                            }
-                        )
-                    }
+                            )
+                        }
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // 免责声明
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = DarkSurface),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "免责声明",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = AccentOrange
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "• 本工具基于社区文档推测开发，参数名需真机验证\n" +
-                                    "• 修改配置可能导致游戏不稳定，请自行承担风险\n" +
-                                    "• 使用前建议备份原始配置文件\n" +
-                                    "• 本工具与 Codemasters/EA/Feral Interactive 无关",
-                            fontSize = 13.sp,
-                            color = TextSecondary,
-                            lineHeight = 20.sp
-                        )
-                    }
+                InfoCard(title = "免责声明", titleColor = AccentOrange) {
+                    NoticeItem("本工具是非官方开源项目，与 Codemasters、EA、Feral Interactive 无从属或授权关系。")
+                    NoticeItem("GRID Legends、Codemasters、EA、Feral Interactive 等名称和商标归其各自权利方所有。")
+                    NoticeItem("修改画质配置可能导致游戏卡顿、闪退或无法进入游戏，请根据设备性能谨慎选择预设。")
+                    NoticeItem("保存前会自动创建备份；如果出现异常，可用备份文件恢复原始配置。")
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // 底部版权
                 Text(
-                    text = "Made with ❤️ by 212duo",
+                    text = "Made by 212duo",
                     fontSize = 12.sp,
                     color = TextDisabled
                 )
                 Text(
-                    text = "GRID Legends © Codemasters / EA\nFeral Interactive 移植版",
+                    text = "非官方工具，仅用于个人配置管理和学习交流",
                     fontSize = 11.sp,
                     color = TextDisabled,
                     textAlign = TextAlign.Center
@@ -255,9 +197,30 @@ fun AboutScreen(
     }
 }
 
-/**
- * 功能特性项
- */
+@Composable
+private fun InfoCard(
+    title: String,
+    titleColor: androidx.compose.ui.graphics.Color,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = DarkSurface),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = title,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = titleColor
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            content()
+        }
+    }
+}
+
 @Composable
 private fun FeatureItem(title: String, description: String) {
     Row(
@@ -270,19 +233,42 @@ private fun FeatureItem(title: String, description: String) {
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
             color = TextPrimary,
-            modifier = Modifier.width(120.dp)
+            modifier = Modifier.width(88.dp)
         )
         Text(
             text = description,
             fontSize = 13.sp,
-            color = TextSecondary
+            color = TextSecondary,
+            lineHeight = 19.sp,
+            modifier = Modifier.weight(1f)
         )
     }
 }
 
-/**
- * 链接项
- */
+@Composable
+private fun NoticeItem(text: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Default.Info,
+            contentDescription = null,
+            tint = AccentOrange,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = text,
+            fontSize = 13.sp,
+            color = TextSecondary,
+            lineHeight = 20.sp,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
 @Composable
 private fun LinkItem(
     icon: ImageVector,

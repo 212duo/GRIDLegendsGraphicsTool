@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
@@ -39,7 +40,8 @@ fun EditorScreen(
     context: Activity,
     configPath: String?,
     configContent: String?,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onAbout: () -> Unit
 ) {
     val shizukuManager = remember { ShizukuManager(context) }
     val safManager = remember { SafManager(context) }
@@ -216,6 +218,28 @@ fun EditorScreen(
                                         }
                                     }
                                 }
+                            }
+                        }
+
+                        item(key = "about_link") {
+                            TextButton(
+                                onClick = onAbout,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Info,
+                                    contentDescription = null,
+                                    tint = TextSecondary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "关于本工具",
+                                    color = TextSecondary,
+                                    fontSize = 14.sp
+                                )
                             }
                         }
 

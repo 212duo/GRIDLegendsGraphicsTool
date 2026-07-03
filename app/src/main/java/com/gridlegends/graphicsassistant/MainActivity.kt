@@ -49,7 +49,8 @@ class MainActivity : ComponentActivity() {
                                 context = this@MainActivity,
                                 configPath = configFilePath,
                                 configContent = configFileContent,
-                                onBack = { currentScreen = Screen.HOME }
+                                onBack = { currentScreen = Screen.HOME },
+                                onAbout = { currentScreen = Screen.ABOUT }
                             )
                         }
                         Screen.ABOUT -> {
