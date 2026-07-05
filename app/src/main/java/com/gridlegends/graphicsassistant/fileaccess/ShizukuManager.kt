@@ -46,8 +46,8 @@ class ShizukuManager(private val context: Context) {
     }
 
     /**
-     * 是否应该使用 Shizuku 模式
-     * Android 16 (API 36) 及以上推荐使用 Shizuku
+     * 是否默认使用 Shizuku 模式。
+     * Android 16 (API 36) 及以上默认使用 Shizuku；Android 11-15 可在 SAF 受限时手动切换。
      */
     fun shouldUseShizuku(): Boolean {
         return Build.VERSION.SDK_INT >= 36

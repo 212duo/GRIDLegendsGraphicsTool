@@ -21,8 +21,8 @@ The app edits the GRID Legends Android `preferences` file and provides ready-to-
   - High-end 1080p 120 FPS
   - Extreme 2K 120 FPS
   - Extreme 2K 120 FPS HDR
-- Android 11-15 uses SAF folder authorization by default and does not require Shizuku.
-- Newer Android versions can use Shizuku to access the game directory.
+- Android 11-15 uses SAF folder authorization by default and does not require Shizuku; if the system picker blocks `Android/data`, you can switch to Shizuku.
+- Android 16 and above uses Shizuku by default to access the game directory.
 
 ## Target Game
 
@@ -43,8 +43,8 @@ The app edits the GRID Legends Android `preferences` file and provides ready-to-
 
 ## Access Modes
 
-- Android 11-15: use the system file picker to authorize the game directory.
-- Android 16 and above: use Shizuku to access the game directory.
+- Android 11-15: use the system file picker by default; if it shows "Can't use this folder", switch to Shizuku on the home screen.
+- Android 16 and above: use Shizuku by default to access the game directory.
 
 If a ROM blocks `Android/data` selection through SAF, authorization may fail. In that case, Shizuku can be used as an alternative.
 

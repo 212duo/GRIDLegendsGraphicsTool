@@ -31,14 +31,16 @@ class MainActivity : ComponentActivity() {
                     // 保存找到的配置文件路径，在页面间传递
                     var configFilePath by remember { mutableStateOf<String?>(null) }
                     var configFileContent by remember { mutableStateOf<String?>(null) }
+                    var configUseShizuku by remember { mutableStateOf(false) }
 
                     when (currentScreen) {
                         Screen.HOME -> {
                             HomeScreen(
                                 context = this@MainActivity,
-                                onAuthorized = { path, content ->
+                                onAuthorized = { path, content, useShizuku ->
                                     configFilePath = path
                                     configFileContent = content
+                                    configUseShizuku = useShizuku
                                     currentScreen = Screen.EDITOR
                                 },
                                 onAbout = { currentScreen = Screen.ABOUT }
@@ -49,6 +51,7 @@ class MainActivity : ComponentActivity() {
                                 context = this@MainActivity,
                                 configPath = configFilePath,
                                 configContent = configFileContent,
+                                useShizuku = configUseShizuku,
                                 onBack = { currentScreen = Screen.HOME },
                                 onAbout = { currentScreen = Screen.ABOUT }
                             )

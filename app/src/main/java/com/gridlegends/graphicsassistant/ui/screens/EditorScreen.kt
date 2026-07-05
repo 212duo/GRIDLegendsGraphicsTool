@@ -40,12 +40,12 @@ fun EditorScreen(
     context: Activity,
     configPath: String?,
     configContent: String?,
+    useShizuku: Boolean,
     onBack: () -> Unit,
     onAbout: () -> Unit
 ) {
     val shizukuManager = remember { ShizukuManager(context) }
     val safManager = remember { SafManager(context) }
-    val useShizuku = remember { shizukuManager.shouldUseShizuku() }
 
     val shizukuOp = remember { ShizukuFileOperator(context, shizukuManager) }
     val safOp = remember { FileOperator(context, safManager) }

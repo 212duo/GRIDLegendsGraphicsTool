@@ -41,12 +41,13 @@ import com.gridlegends.graphicsassistant.ui.theme.*
 @Composable
 fun HomeScreen(
     context: Activity,
-    onAuthorized: (configPath: String?, configContent: String?) -> Unit,
+    onAuthorized: (configPath: String?, configContent: String?, useShizuku: Boolean) -> Unit,
     onAbout: () -> Unit
 ) {
     val safManager = remember { SafManager(context) }
     val shizukuManager = remember { ShizukuManager(context) }
-    val useShizuku = remember { shizukuManager.shouldUseShizuku() }
+    val defaultUseShizuku = remember { shizukuManager.shouldUseShizuku() }
+    var useShizuku by remember { mutableStateOf(defaultUseShizuku) }
 
     // Shizuku 状态
     var shizukuStatus by remember { mutableStateOf(shizukuManager.getStatus()) }
@@ -79,22 +80,30 @@ fun HomeScreen(
     }
 
     // 检查配置文件
-    LaunchedEffect(shizukuStatus, safAuthorized) {
+    LaunchedEffect(useShizuku, shizukuStatus, safAuthorized) {
         Log.d("GLGraphics", "HomeScreen: 检查配置 useShizuku=$useShizuku, shizukuStatus=$shizukuStatus, safAuthorized=$safAuthorized")
-        if (useShizuku && shizukuStatus == ShizukuStatus.READY) {
-            val found = shizukuOp.findConfigFile()
-            Log.d("GLGraphics", "HomeScreen: findConfigFile -> $found")
-            foundConfigPath = found
-            if (found != null) {
-                foundConfigContent = shizukuOp.readFile(found)
-                Log.d("GLGraphics", "HomeScreen: readFile -> ${foundConfigContent?.length ?: "null"} 字符")
-                configFound = foundConfigContent != null
+        foundConfigPath = null
+        foundConfigContent = null
+        if (useShizuku) {
+            if (shizukuStatus == ShizukuStatus.READY) {
+                val found = shizukuOp.findConfigFile()
+                Log.d("GLGraphics", "HomeScreen: findConfigFile -> $found")
+                foundConfigPath = found
+                if (found != null) {
+                    foundConfigContent = shizukuOp.readFile(found)
+                    Log.d("GLGraphics", "HomeScreen: readFile -> ${foundConfigContent?.length ?: "null"} 字符")
+                    configFound = foundConfigContent != null
+                } else {
+                    configFound = false
+                }
             } else {
                 configFound = false
             }
         } else if (safAuthorized) {
             configFound = safManager.findConfigFile() != null
             Log.d("GLGraphics", "HomeScreen: SAF configFound=$configFound")
+        } else {
+            configFound = false
         }
     }
 
@@ -270,7 +279,7 @@ fun HomeScreen(
                     Button(
                         onClick = {
                             Log.d("GLGraphics", "HomeScreen: 进入编辑 path=$foundConfigPath, content长度=${foundConfigContent?.length}")
-                            onAuthorized(foundConfigPath, foundConfigContent)
+                            onAuthorized(foundConfigPath, foundConfigContent, true)
                         },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -286,6 +295,20 @@ fun HomeScreen(
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
+                    }
+                }
+
+                if (!defaultUseShizuku) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedButton(
+                        onClick = { useShizuku = false },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = TextSecondary
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(text = "改用系统文件夹授权", fontSize = 14.sp)
                     }
                 }
             } else {
@@ -349,7 +372,7 @@ fun HomeScreen(
                     Button(
                         onClick = {
                             Log.d("GLGraphics", "HomeScreen: 进入编辑 path=$foundConfigPath, content长度=${foundConfigContent?.length}")
-                            onAuthorized(foundConfigPath, foundConfigContent)
+                            onAuthorized(foundConfigPath, foundConfigContent, false)
                         },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -382,6 +405,36 @@ fun HomeScreen(
                     ) {
                         Text(text = "重新授权目录", fontSize = 16.sp)
                     }
+                }
+
+                if (!defaultUseShizuku) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedButton(
+                        onClick = {
+                            shizukuStatus = shizukuManager.getStatus()
+                            useShizuku = true
+                        },
+                        enabled = isGameInstalled,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = AccentOrange
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = "无法选择文件夹？改用 Shizuku",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Android 14/15 如果提示“无法使用此文件夹”，请返回后使用 Shizuku 方式访问。",
+                        fontSize = 12.sp,
+                        color = TextSecondary,
+                        textAlign = TextAlign.Center
+                    )
                 }
             }
 

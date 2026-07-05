@@ -21,8 +21,8 @@
   - 高配 1080p 120 帧
   - 超极限 2K 120 帧
   - 超越极限 2K 120 HDR
-- Android 11-15 默认使用 SAF 目录授权访问，不需要 Shizuku。
-- 较新 Android 版本可使用 Shizuku 访问游戏目录。
+- Android 11-15 默认使用 SAF 目录授权访问，不需要 Shizuku；如果系统文件选择器拦截 `Android/data`，可切换到 Shizuku。
+- Android 16 及以上默认使用 Shizuku 访问游戏目录。
 
 ## 目标游戏
 
@@ -43,8 +43,8 @@
 
 ## 访问方式
 
-- Android 11-15：使用系统文件选择器授权游戏目录。
-- Android 16 及以上：使用 Shizuku 授权访问游戏目录。
+- Android 11-15：默认使用系统文件选择器授权游戏目录；如果出现“无法使用此文件夹”，请在首页改用 Shizuku。
+- Android 16 及以上：默认使用 Shizuku 授权访问游戏目录。
 
 如果部分 ROM 限制了 `Android/data` 目录选择，SAF 授权可能失败，这种情况下可以考虑使用 Shizuku。
 
