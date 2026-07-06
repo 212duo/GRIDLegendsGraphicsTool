@@ -21,7 +21,8 @@ The app edits the GRID Legends Android `preferences` file and provides ready-to-
   - High-end 1080p 120 FPS
   - Extreme 2K 120 FPS
   - Extreme 2K 120 FPS HDR
-- Android 11-15 uses SAF folder authorization by default and does not require Shizuku; if the system picker blocks `Android/data`, you can switch to Shizuku.
+- Supports Root, Shizuku, and SAF access modes.
+- Android 11-15 uses SAF folder authorization by default; if the system picker blocks `Android/data`, you can switch to Shizuku or Root.
 - Android 16 and above uses Shizuku by default to access the game directory.
 
 ## Target Game
@@ -36,17 +37,18 @@ The app edits the GRID Legends Android `preferences` file and provides ready-to-
 ## Usage
 
 1. Install and launch GRID Legends at least once so the game creates the config file.
-2. Open this tool and grant folder access or Shizuku permission.
+2. Open this tool and grant folder, Shizuku, or Root access.
 3. Enter the graphics editor.
 4. Adjust parameters manually, or select a preset and tap Apply Preset.
 5. Save changes and restart the game.
 
 ## Access Modes
 
-- Android 11-15: use the system file picker by default; if it shows "Can't use this folder", switch to Shizuku on the home screen.
+- Root: if the device uses Magisk, KernelSU, APatch, or a similar root solution, choose Root access on the home screen.
+- Android 11-15: use the system file picker by default; if it shows "Can't use this folder", switch to Shizuku or Root on the home screen.
 - Android 16 and above: use Shizuku by default to access the game directory.
 
-If a ROM blocks `Android/data` selection through SAF, authorization may fail. In that case, Shizuku can be used as an alternative.
+If a ROM blocks `Android/data` selection through SAF, authorization may fail. In that case, Shizuku or Root can be used as an alternative.
 
 ## Build
 
@@ -72,5 +74,6 @@ The release build is configured in `app/build.gradle.kts`.
 - Kotlin
 - Jetpack Compose
 - AndroidX DocumentFile
+- Root shell
 - Shizuku API
 - XmlPullParser

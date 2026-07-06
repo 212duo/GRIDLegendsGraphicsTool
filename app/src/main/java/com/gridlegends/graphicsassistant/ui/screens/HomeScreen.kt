@@ -28,6 +28,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.gridlegends.graphicsassistant.fileaccess.AccessMode
+import com.gridlegends.graphicsassistant.fileaccess.RootFileOperator
+import com.gridlegends.graphicsassistant.fileaccess.RootManager
+import com.gridlegends.graphicsassistant.fileaccess.RootStatus
 import com.gridlegends.graphicsassistant.fileaccess.SafManager
 import com.gridlegends.graphicsassistant.fileaccess.ShizukuFileOperator
 import com.gridlegends.graphicsassistant.fileaccess.logBuffer
@@ -41,16 +45,22 @@ import com.gridlegends.graphicsassistant.ui.theme.*
 @Composable
 fun HomeScreen(
     context: Activity,
-    onAuthorized: (configPath: String?, configContent: String?, useShizuku: Boolean) -> Unit,
+    onAuthorized: (configPath: String?, configContent: String?, accessMode: AccessMode) -> Unit,
     onAbout: () -> Unit
 ) {
     val safManager = remember { SafManager(context) }
     val shizukuManager = remember { ShizukuManager(context) }
-    val defaultUseShizuku = remember { shizukuManager.shouldUseShizuku() }
-    var useShizuku by remember { mutableStateOf(defaultUseShizuku) }
+    val rootManager = remember { RootManager() }
+    val defaultAccessMode = remember {
+        if (shizukuManager.shouldUseShizuku()) AccessMode.SHIZUKU else AccessMode.SAF
+    }
+    var accessMode by remember { mutableStateOf(defaultAccessMode) }
+    val useShizuku = accessMode == AccessMode.SHIZUKU
+    val useRoot = accessMode == AccessMode.ROOT
 
     // Shizuku 状态
     var shizukuStatus by remember { mutableStateOf(shizukuManager.getStatus()) }
+    var rootStatus by remember { mutableStateOf(RootStatus.UNKNOWN) }
     var isGameInstalled by remember { mutableStateOf(safManager.isGameInstalled()) }
     var configFound by remember { mutableStateOf(false) }
 
@@ -58,6 +68,7 @@ fun HomeScreen(
     var safAuthorized by remember { mutableStateOf(safManager.isAuthorized()) }
 
     val shizukuOp = remember { ShizukuFileOperator(context, shizukuManager) }
+    val rootOp = remember { RootFileOperator(rootManager) }
     // 保存找到的配置文件路径和内容
     var foundConfigPath by remember { mutableStateOf<String?>(null) }
     var foundConfigContent by remember { mutableStateOf<String?>(null) }
@@ -80,12 +91,26 @@ fun HomeScreen(
     }
 
     // 检查配置文件
-    LaunchedEffect(useShizuku, shizukuStatus, safAuthorized) {
-        Log.d("GLGraphics", "HomeScreen: 检查配置 useShizuku=$useShizuku, shizukuStatus=$shizukuStatus, safAuthorized=$safAuthorized")
+    LaunchedEffect(accessMode, shizukuStatus, rootStatus, safAuthorized) {
+        Log.d("GLGraphics", "HomeScreen: 检查配置 accessMode=$accessMode, shizukuStatus=$shizukuStatus, rootStatus=$rootStatus, safAuthorized=$safAuthorized")
         foundConfigPath = null
         foundConfigContent = null
-        if (useShizuku) {
-            if (shizukuStatus == ShizukuStatus.READY) {
+        when (accessMode) {
+            AccessMode.ROOT -> if (rootStatus == RootStatus.READY) {
+                val found = rootOp.findConfigFile()
+                Log.d("GLGraphics", "HomeScreen: root findConfigFile -> $found")
+                foundConfigPath = found
+                if (found != null) {
+                    foundConfigContent = rootOp.readFile(found)
+                    Log.d("GLGraphics", "HomeScreen: root readFile -> ${foundConfigContent?.length ?: "null"} 字符")
+                    configFound = foundConfigContent != null
+                } else {
+                    configFound = false
+                }
+            } else {
+                configFound = false
+            }
+            AccessMode.SHIZUKU -> if (shizukuStatus == ShizukuStatus.READY) {
                 val found = shizukuOp.findConfigFile()
                 Log.d("GLGraphics", "HomeScreen: findConfigFile -> $found")
                 foundConfigPath = found
@@ -99,11 +124,12 @@ fun HomeScreen(
             } else {
                 configFound = false
             }
-        } else if (safAuthorized) {
-            configFound = safManager.findConfigFile() != null
-            Log.d("GLGraphics", "HomeScreen: SAF configFound=$configFound")
-        } else {
-            configFound = false
+            AccessMode.SAF -> if (safAuthorized) {
+                configFound = safManager.findConfigFile() != null
+                Log.d("GLGraphics", "HomeScreen: SAF configFound=$configFound")
+            } else {
+                configFound = false
+            }
         }
     }
 
@@ -121,10 +147,10 @@ fun HomeScreen(
     }
 
     // 判断是否已就绪（可以进入编辑）
-    val isReady = if (useShizuku) {
-        shizukuStatus == ShizukuStatus.READY && configFound
-    } else {
-        safAuthorized && configFound
+    val isReady = when (accessMode) {
+        AccessMode.ROOT -> rootStatus == RootStatus.READY && configFound
+        AccessMode.SHIZUKU -> shizukuStatus == ShizukuStatus.READY && configFound
+        AccessMode.SAF -> safAuthorized && configFound
     }
 
     Box(
@@ -165,7 +191,109 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (useShizuku) {
+            if (useRoot) {
+                RootStatusCard(
+                    status = rootStatus,
+                    onCheckRoot = {
+                        rootStatus = rootManager.checkRootAccess()
+                    }
+                )
+
+                if (rootStatus == RootStatus.READY) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    StatusCard(
+                        title = "配置文件",
+                        isOk = configFound,
+                        okText = "已找到配置文件",
+                        failText = "未找到配置文件，请确认游戏已运行过至少一次"
+                    )
+
+                    if (!configFound) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        var diagText by remember { mutableStateOf("") }
+                        OutlinedButton(
+                            onClick = {
+                                diagText = try {
+                                    rootOp.diagnose()
+                                } catch (e: Exception) {
+                                    "诊断失败: ${e.message}"
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = NeonCyan
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(text = "扫描游戏目录（Root 调试）", fontSize = 14.sp)
+                        }
+                        if (diagText.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E)),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(
+                                    text = diagText,
+                                    fontSize = 11.sp,
+                                    color = TextSecondary,
+                                    modifier = Modifier.padding(12.dp),
+                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                if (isReady) {
+                    Button(
+                        onClick = {
+                            Log.d("GLGraphics", "HomeScreen: Root 进入编辑 path=$foundConfigPath, content长度=${foundConfigContent?.length}")
+                            onAuthorized(foundConfigPath, foundConfigContent, AccessMode.ROOT)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = AccentOrange,
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = "进入画质编辑",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedButton(
+                    onClick = {
+                        shizukuStatus = shizukuManager.getStatus()
+                        accessMode = AccessMode.SHIZUKU
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = AccentOrange),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(text = "改用 Shizuku", fontSize = 14.sp)
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = { accessMode = AccessMode.SAF },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(text = "改用系统文件夹授权", fontSize = 14.sp)
+                }
+            } else if (useShizuku) {
                 // ===== Shizuku 模式 (Android 16+) =====
                 ShizukuStatusCard(
                     status = shizukuStatus,
@@ -279,7 +407,7 @@ fun HomeScreen(
                     Button(
                         onClick = {
                             Log.d("GLGraphics", "HomeScreen: 进入编辑 path=$foundConfigPath, content长度=${foundConfigContent?.length}")
-                            onAuthorized(foundConfigPath, foundConfigContent, true)
+                            onAuthorized(foundConfigPath, foundConfigContent, AccessMode.SHIZUKU)
                         },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -298,10 +426,10 @@ fun HomeScreen(
                     }
                 }
 
-                if (!defaultUseShizuku) {
+                if (defaultAccessMode != AccessMode.SHIZUKU) {
                     Spacer(modifier = Modifier.height(12.dp))
                     OutlinedButton(
-                        onClick = { useShizuku = false },
+                        onClick = { accessMode = AccessMode.SAF },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = TextSecondary
@@ -310,6 +438,19 @@ fun HomeScreen(
                     ) {
                         Text(text = "改用系统文件夹授权", fontSize = 14.sp)
                     }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = { accessMode = AccessMode.ROOT },
+                    enabled = isGameInstalled,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = AccentOrange
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(text = "使用 Root 权限访问", fontSize = 14.sp)
                 }
             } else {
                 // ===== SAF 模式 (Android 15 及以下) =====
@@ -372,7 +513,7 @@ fun HomeScreen(
                     Button(
                         onClick = {
                             Log.d("GLGraphics", "HomeScreen: 进入编辑 path=$foundConfigPath, content长度=${foundConfigContent?.length}")
-                            onAuthorized(foundConfigPath, foundConfigContent, false)
+                            onAuthorized(foundConfigPath, foundConfigContent, AccessMode.SAF)
                         },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -407,12 +548,12 @@ fun HomeScreen(
                     }
                 }
 
-                if (!defaultUseShizuku) {
+                if (defaultAccessMode != AccessMode.SHIZUKU) {
                     Spacer(modifier = Modifier.height(12.dp))
                     OutlinedButton(
                         onClick = {
                             shizukuStatus = shizukuManager.getStatus()
-                            useShizuku = true
+                            accessMode = AccessMode.SHIZUKU
                         },
                         enabled = isGameInstalled,
                         modifier = Modifier.fillMaxWidth(),
@@ -436,6 +577,23 @@ fun HomeScreen(
                         textAlign = TextAlign.Center
                     )
                 }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedButton(
+                    onClick = { accessMode = AccessMode.ROOT },
+                    enabled = isGameInstalled,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = AccentOrange
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = "已有 Root？使用 Root 权限访问",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.weight(1f))
@@ -455,6 +613,80 @@ fun HomeScreen(
                 Text(
                     text = "关于",
                     fontSize = 14.sp,
+                    color = TextSecondary
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Root 状态卡片（带检测/授权按钮）
+ */
+@Composable
+private fun RootStatusCard(
+    status: RootStatus,
+    onCheckRoot: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = DarkSurface
+        ),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = if (status == RootStatus.READY) Icons.Default.CheckCircle else Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = if (status == RootStatus.READY) NeonCyan else WarningRed,
+                    modifier = Modifier.size(32.dp)
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Root 权限",
+                        fontSize = 14.sp,
+                        color = TextSecondary
+                    )
+                    Text(
+                        text = when (status) {
+                            RootStatus.UNKNOWN -> "未检测"
+                            RootStatus.NOT_AVAILABLE -> "未检测到 su"
+                            RootStatus.NOT_AUTHORIZED -> "未授权或被拒绝"
+                            RootStatus.READY -> "已就绪"
+                        },
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = if (status == RootStatus.READY) NeonCyan else WarningRed
+                    )
+                }
+            }
+
+            if (status != RootStatus.READY) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(
+                    onClick = onCheckRoot,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = NeonCyan,
+                        contentColor = DarkBackground
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(text = "检测并授权 Root", fontWeight = FontWeight.Bold)
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "点击后请在 Magisk、KernelSU 或 APatch 等管理器中允许授权。",
+                    fontSize = 12.sp,
                     color = TextSecondary
                 )
             }

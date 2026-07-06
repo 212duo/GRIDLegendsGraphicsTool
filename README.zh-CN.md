@@ -21,7 +21,8 @@
   - 高配 1080p 120 帧
   - 超极限 2K 120 帧
   - 超越极限 2K 120 HDR
-- Android 11-15 默认使用 SAF 目录授权访问，不需要 Shizuku；如果系统文件选择器拦截 `Android/data`，可切换到 Shizuku。
+- 支持 Root、Shizuku 和 SAF 三种访问方式。
+- Android 11-15 默认使用 SAF 目录授权访问；如果系统文件选择器拦截 `Android/data`，可切换到 Shizuku 或 Root。
 - Android 16 及以上默认使用 Shizuku 访问游戏目录。
 
 ## 目标游戏
@@ -36,17 +37,18 @@
 ## 使用说明
 
 1. 安装并启动 GRID Legends 至少一次，让游戏生成配置文件。
-2. 打开本工具并完成目录授权或 Shizuku 授权。
+2. 打开本工具并完成目录授权、Shizuku 授权或 Root 授权。
 3. 进入画质编辑页。
 4. 手动调整参数，或选择一个画质预设并点击“应用预设”。
 5. 点击保存后重启游戏，让配置生效。
 
 ## 访问方式
 
-- Android 11-15：默认使用系统文件选择器授权游戏目录；如果出现“无法使用此文件夹”，请在首页改用 Shizuku。
+- Root：已有 Magisk、KernelSU、APatch 等 Root 环境时，可在首页选择 Root 权限访问。
+- Android 11-15：默认使用系统文件选择器授权游戏目录；如果出现“无法使用此文件夹”，请在首页改用 Shizuku 或 Root。
 - Android 16 及以上：默认使用 Shizuku 授权访问游戏目录。
 
-如果部分 ROM 限制了 `Android/data` 目录选择，SAF 授权可能失败，这种情况下可以考虑使用 Shizuku。
+如果部分 ROM 限制了 `Android/data` 目录选择，SAF 授权可能失败，这种情况下可以考虑使用 Shizuku 或 Root。
 
 ## 构建
 

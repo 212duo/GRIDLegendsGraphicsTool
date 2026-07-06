@@ -23,16 +23,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gridlegends.graphicsassistant.data.*
+import com.gridlegends.graphicsassistant.fileaccess.AccessMode
 import com.gridlegends.graphicsassistant.fileaccess.FileOperator
+import com.gridlegends.graphicsassistant.fileaccess.RootFileOperator
+import com.gridlegends.graphicsassistant.fileaccess.RootManager
 import com.gridlegends.graphicsassistant.fileaccess.SafManager
 import com.gridlegends.graphicsassistant.fileaccess.ShizukuFileOperator
 import com.gridlegends.graphicsassistant.fileaccess.ShizukuManager
-import com.gridlegends.graphicsassistant.fileaccess.ShizukuStatus
 import com.gridlegends.graphicsassistant.ui.components.*
 import com.gridlegends.graphicsassistant.ui.theme.*
 
 /**
- * 画质编辑主界面（支持 Shizuku 和 SAF 两种模式）
+ * 画质编辑主界面（支持 Root、Shizuku 和 SAF 三种模式）
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,14 +42,16 @@ fun EditorScreen(
     context: Activity,
     configPath: String?,
     configContent: String?,
-    useShizuku: Boolean,
+    accessMode: AccessMode,
     onBack: () -> Unit,
     onAbout: () -> Unit
 ) {
     val shizukuManager = remember { ShizukuManager(context) }
+    val rootManager = remember { RootManager() }
     val safManager = remember { SafManager(context) }
 
     val shizukuOp = remember { ShizukuFileOperator(context, shizukuManager) }
+    val rootOp = remember { RootFileOperator(rootManager) }
     val safOp = remember { FileOperator(context, safManager) }
 
     // 参数当前值状态
@@ -59,20 +63,32 @@ fun EditorScreen(
 
     // 加载配置文件
     LaunchedEffect(Unit) {
-        Log.d("GLGraphics", "EditorScreen: 开始加载 configPath=$configPath, configContent=${configContent?.length ?: "null"} 字符, useShizuku=$useShizuku")
+        Log.d("GLGraphics", "EditorScreen: 开始加载 configPath=$configPath, configContent=${configContent?.length ?: "null"} 字符, accessMode=$accessMode")
         try {
             val rawValues = if (configContent != null) {
                 Log.d("GLGraphics", "EditorScreen: 使用传入的 configContent (${configContent.length} 字符)")
                 ConfigParser.parse(configContent.byteInputStream())
-            } else if (useShizuku && configPath != null) {
-                Log.d("GLGraphics", "EditorScreen: configContent 为空，用 configPath 直接读取: $configPath")
-                shizukuOp.readConfigFromPath(configPath)
-            } else if (useShizuku) {
-                Log.d("GLGraphics", "EditorScreen: 回退到 shizukuOp.readConfig()")
-                shizukuOp.readConfig()
             } else {
-                Log.d("GLGraphics", "EditorScreen: 使用 SAF readConfig()")
-                safOp.readConfig()
+                when (accessMode) {
+                    AccessMode.ROOT -> if (configPath != null) {
+                        Log.d("GLGraphics", "EditorScreen: Root 用 configPath 直接读取: $configPath")
+                        rootOp.readConfigFromPath(configPath)
+                    } else {
+                        Log.d("GLGraphics", "EditorScreen: Root 回退到 readConfig()")
+                        rootOp.readConfig()
+                    }
+                    AccessMode.SHIZUKU -> if (configPath != null) {
+                        Log.d("GLGraphics", "EditorScreen: Shizuku 用 configPath 直接读取: $configPath")
+                        shizukuOp.readConfigFromPath(configPath)
+                    } else {
+                        Log.d("GLGraphics", "EditorScreen: 回退到 shizukuOp.readConfig()")
+                        shizukuOp.readConfig()
+                    }
+                    AccessMode.SAF -> {
+                        Log.d("GLGraphics", "EditorScreen: 使用 SAF readConfig()")
+                        safOp.readConfig()
+                    }
+                }
             }
             Log.d("GLGraphics", "EditorScreen: rawValues=${rawValues?.size ?: "null"} 个参数")
             if (rawValues != null) {
@@ -261,12 +277,18 @@ fun EditorScreen(
                     onClick = {
                         isSaving = true
                         try {
-                            val success = if (useShizuku && configPath != null) {
-                                shizukuOp.writeConfigToPath(configPath, paramValues)
-                            } else if (useShizuku) {
-                                shizukuOp.writeConfig(paramValues)
-                            } else {
-                                safOp.writeConfig(paramValues)
+                            val success = when (accessMode) {
+                                AccessMode.ROOT -> if (configPath != null) {
+                                    rootOp.writeConfigToPath(configPath, paramValues)
+                                } else {
+                                    rootOp.writeConfig(paramValues)
+                                }
+                                AccessMode.SHIZUKU -> if (configPath != null) {
+                                    shizukuOp.writeConfigToPath(configPath, paramValues)
+                                } else {
+                                    shizukuOp.writeConfig(paramValues)
+                                }
+                                AccessMode.SAF -> safOp.writeConfig(paramValues)
                             }
                             if (success) {
                                 // 更新原始值

@@ -9,6 +9,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import com.gridlegends.graphicsassistant.ui.theme.GridLegendsTheme
+import com.gridlegends.graphicsassistant.fileaccess.AccessMode
 import com.gridlegends.graphicsassistant.ui.screens.AboutScreen
 import com.gridlegends.graphicsassistant.ui.screens.EditorScreen
 import com.gridlegends.graphicsassistant.ui.screens.HomeScreen
@@ -31,16 +32,16 @@ class MainActivity : ComponentActivity() {
                     // 保存找到的配置文件路径，在页面间传递
                     var configFilePath by remember { mutableStateOf<String?>(null) }
                     var configFileContent by remember { mutableStateOf<String?>(null) }
-                    var configUseShizuku by remember { mutableStateOf(false) }
+                    var configAccessMode by remember { mutableStateOf(AccessMode.SAF) }
 
                     when (currentScreen) {
                         Screen.HOME -> {
                             HomeScreen(
                                 context = this@MainActivity,
-                                onAuthorized = { path, content, useShizuku ->
+                                onAuthorized = { path, content, accessMode ->
                                     configFilePath = path
                                     configFileContent = content
-                                    configUseShizuku = useShizuku
+                                    configAccessMode = accessMode
                                     currentScreen = Screen.EDITOR
                                 },
                                 onAbout = { currentScreen = Screen.ABOUT }
@@ -51,7 +52,7 @@ class MainActivity : ComponentActivity() {
                                 context = this@MainActivity,
                                 configPath = configFilePath,
                                 configContent = configFileContent,
-                                useShizuku = configUseShizuku,
+                                accessMode = configAccessMode,
                                 onBack = { currentScreen = Screen.HOME },
                                 onAbout = { currentScreen = Screen.ABOUT }
                             )
