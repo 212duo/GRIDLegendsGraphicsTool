@@ -19,8 +19,8 @@ The app edits the GRID Legends Android `preferences` file and provides ready-to-
   - Mid-range
   - High-end
   - High-end 1080p 120 FPS
-  - Extreme 2K 120 FPS
-  - Extreme 2K 120 FPS HDR
+  - Extreme 4K 120 FPS
+  - Extreme 4K 120 FPS HDR
 - Supports Root, Shizuku, and SAF access modes.
 - Android 11-15 uses SAF folder authorization by default; if the system picker blocks `Android/data`, you can switch to Shizuku or Root.
 - Android 16 and above uses Shizuku by default to access the game directory.

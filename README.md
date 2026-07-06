@@ -19,8 +19,8 @@
   - 中配专属
   - 高配专属
   - 高配 1080p 120 帧
-  - 超极限 2K 120 帧
-  - 超越极限 2K 120 HDR
+  - 超极限 4K 120 帧
+  - 超越极限 4K 120 HDR
 - 支持 Root、Shizuku 和 SAF 三种访问方式。
 - Android 11-15 默认使用 SAF 目录授权访问；如果系统文件选择器拦截 `Android/data`，可切换到 Shizuku 或 Root。
 - Android 16 及以上默认使用 Shizuku 访问游戏目录。

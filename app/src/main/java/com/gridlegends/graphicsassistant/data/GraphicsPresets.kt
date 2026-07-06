@@ -33,7 +33,7 @@ object GraphicsPresets {
         ),
         preset(
             name = "低配 720p 60 帧",
-            description = "720p、60 帧、无观众，来自低 720p+60 帧样本。",
+            description = "720p、60 帧、关闭观众，适合低端设备。",
             fps = "60",
             height = "720",
             minPercent = "70",
@@ -147,8 +147,8 @@ object GraphicsPresets {
             graphicsOptimisation = "100"
         ),
         preset(
-            name = "超极限 2K 120 帧",
-            description = "2160p、120 帧，2K 样本，不启用 HDR。",
+            name = "超极限 4K 120 帧",
+            description = "2160p、120 帧，超高分辨率，不启用 HDR。",
             fps = "120",
             height = "2160",
             minPercent = "100",
@@ -170,7 +170,7 @@ object GraphicsPresets {
             graphicsOptimisation = "100"
         ),
         preset(
-            name = "超越极限 2K 120 HDR",
+            name = "超越极限 4K 120 HDR",
             description = "2160p、120 帧、HDR，最高负载，只建议高端设备使用。",
             fps = "120",
             height = "2160",

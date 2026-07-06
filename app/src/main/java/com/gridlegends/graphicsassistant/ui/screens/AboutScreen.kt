@@ -91,7 +91,7 @@ fun AboutScreen(
                 )
 
                 Text(
-                    text = "v1.1.3",
+                    text = "v1.1.4",
                     fontSize = 14.sp,
                     color = TextSecondary
                 )
@@ -109,7 +109,7 @@ fun AboutScreen(
 
                 InfoCard(title = "主要功能", titleColor = NeonCyan) {
                     FeatureItem("配置读写", "读取游戏 preferences 文件，并尽量保留未管理的原始字段")
-                    FeatureItem("画质预设", "内置低配、平衡、高配、2K、HDR 等多组预设")
+                    FeatureItem("画质预设", "内置低配、平衡、高配、4K、HDR 等多组预设")
                     FeatureItem("精细调整", "支持帧率、分辨率、纹理、阴影、反射、后处理等参数")
                     FeatureItem("访问方式", "支持 Root、Shizuku 和 SAF，按设备权限情况选择")
                     FeatureItem("自动备份", "保存前会创建 preferences_backup_* 备份文件")

@@ -1,6 +1,7 @@
 package com.gridlegends.graphicsassistant
 
 import android.os.Bundle
+import androidx.activity.compose.BackHandler
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -29,10 +30,28 @@ class MainActivity : ComponentActivity() {
             GridLegendsTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     var currentScreen by remember { mutableStateOf(Screen.HOME) }
+                    var previousScreen by remember { mutableStateOf(Screen.HOME) }
                     // 保存找到的配置文件路径，在页面间传递
                     var configFilePath by remember { mutableStateOf<String?>(null) }
                     var configFileContent by remember { mutableStateOf<String?>(null) }
                     var configAccessMode by remember { mutableStateOf(AccessMode.SAF) }
+
+                    fun navigateToAbout() {
+                        previousScreen = currentScreen
+                        currentScreen = Screen.ABOUT
+                    }
+
+                    fun navigateBack() {
+                        currentScreen = when (currentScreen) {
+                            Screen.EDITOR -> Screen.HOME
+                            Screen.ABOUT -> previousScreen
+                            Screen.HOME -> Screen.HOME
+                        }
+                    }
+
+                    BackHandler(enabled = currentScreen != Screen.HOME) {
+                        navigateBack()
+                    }
 
                     when (currentScreen) {
                         Screen.HOME -> {
@@ -44,7 +63,7 @@ class MainActivity : ComponentActivity() {
                                     configAccessMode = accessMode
                                     currentScreen = Screen.EDITOR
                                 },
-                                onAbout = { currentScreen = Screen.ABOUT }
+                                onAbout = { navigateToAbout() }
                             )
                         }
                         Screen.EDITOR -> {
@@ -53,13 +72,13 @@ class MainActivity : ComponentActivity() {
                                 configPath = configFilePath,
                                 configContent = configFileContent,
                                 accessMode = configAccessMode,
-                                onBack = { currentScreen = Screen.HOME },
-                                onAbout = { currentScreen = Screen.ABOUT }
+                                onBack = { navigateBack() },
+                                onAbout = { navigateToAbout() }
                             )
                         }
                         Screen.ABOUT -> {
                             AboutScreen(
-                                onBack = { currentScreen = Screen.HOME }
+                                onBack = { navigateBack() }
                             )
                         }
                     }

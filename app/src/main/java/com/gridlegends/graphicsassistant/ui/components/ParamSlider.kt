@@ -2,10 +2,14 @@ package com.gridlegends.graphicsassistant.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.gridlegends.graphicsassistant.data.GraphicsParam
 import com.gridlegends.graphicsassistant.data.ParamValue
@@ -24,6 +28,17 @@ fun ParamSlider(
 ) {
     val currentValue = paramValue.value.toFloatOrNull() ?: param.minValue
     val isModified = paramValue.isModified
+    val context = LocalContext.current
+    val displayMetrics = context.resources.displayMetrics
+    val deviceRenderHeight = minOf(displayMetrics.widthPixels, displayMetrics.heightPixels)
+        .coerceIn(param.minValue.toInt(), param.maxValue.toInt())
+    val isResolutionHeight = param.key == "Setup/FixedScreenHeight"
+
+    fun updateValue(value: Float) {
+        val snapped = (Math.round(value / param.step) * param.step)
+            .coerceIn(param.minValue, param.maxValue)
+        onValueChange(snapped.toInt().toString())
+    }
 
     Column(
         modifier = modifier
@@ -58,9 +73,7 @@ fun ParamSlider(
         Slider(
             value = currentValue,
             onValueChange = { newValue ->
-                val snapped = (Math.round(newValue / param.step) * param.step)
-                    .coerceIn(param.minValue, param.maxValue)
-                onValueChange(snapped.toInt().toString())
+                updateValue(newValue)
             },
             valueRange = param.minValue..param.maxValue,
             steps = ((param.maxValue - param.minValue) / param.step - 1).toInt().coerceAtLeast(0),
@@ -71,6 +84,47 @@ fun ParamSlider(
             ),
             modifier = Modifier.fillMaxWidth()
         )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedIconButton(
+                onClick = { updateValue(currentValue - param.step) },
+                enabled = currentValue > param.minValue,
+                modifier = Modifier.size(40.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Remove,
+                    contentDescription = "减少"
+                )
+            }
+
+            if (isResolutionHeight) {
+                OutlinedButton(
+                    onClick = { updateValue(deviceRenderHeight.toFloat()) },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(text = "设备高度 ${deviceRenderHeight}px")
+                }
+            } else {
+                Spacer(modifier = Modifier.weight(1f))
+            }
+
+            OutlinedIconButton(
+                onClick = { updateValue(currentValue + param.step) },
+                enabled = currentValue < param.maxValue,
+                modifier = Modifier.size(40.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "增加"
+                )
+            }
+        }
 
         // 参数说明
         Text(
