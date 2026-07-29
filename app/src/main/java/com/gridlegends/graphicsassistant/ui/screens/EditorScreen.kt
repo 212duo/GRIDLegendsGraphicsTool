@@ -187,26 +187,26 @@ fun EditorScreen(
     }
 
     fun runBottomAction() {
-        val preset = bundledPreset
-        if (preset != null) {
-            isSaving = true
-            ConfigExporter.build(preset, paramValues).fold(
-                onSuccess = { bytes ->
-                    pendingExportBytes = bytes
-                    pendingExportSnapshot = currentSnapshot
-                    exportLauncher.launch("preferences")
-                },
-                onFailure = { error ->
-                    Toast.makeText(
-                        context,
-                        "导出内容校验失败：${error.message}",
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
-            )
-            isSaving = false
-        } else {
-            saveLiveConfig(source as EditorSource.LiveConfig)
+        when (source) {
+            is EditorSource.BundledPreset -> {
+                isSaving = true
+                ConfigExporter.build(source.preset, paramValues).fold(
+                    onSuccess = { bytes ->
+                        pendingExportBytes = bytes
+                        pendingExportSnapshot = currentSnapshot
+                        exportLauncher.launch("preferences")
+                    },
+                    onFailure = { error ->
+                        Toast.makeText(
+                            context,
+                            "导出内容校验失败：${error.message}",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                )
+                isSaving = false
+            }
+            is EditorSource.LiveConfig -> saveLiveConfig(source)
         }
     }
 

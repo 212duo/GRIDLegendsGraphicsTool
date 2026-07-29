@@ -46,7 +46,10 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    BackHandler(enabled = currentScreen != Screen.HOME && currentScreen != Screen.EDITOR) {
+                    BackHandler(
+                        enabled = currentScreen != Screen.HOME &&
+                            (currentScreen != Screen.EDITOR || editorSource == null)
+                    ) {
                         navigateBack()
                     }
 
@@ -61,13 +64,18 @@ class MainActivity : ComponentActivity() {
                                 onAbout = { navigateToAbout() }
                             )
                         }
-                        Screen.EDITOR -> editorSource?.let { source ->
-                            EditorScreen(
-                                context = this@MainActivity,
-                                source = source,
-                                onBack = { navigateBack() },
-                                onAbout = { navigateToAbout() }
-                            )
+                        Screen.EDITOR -> {
+                            val source = editorSource
+                            if (source == null) {
+                                LaunchedEffect(Unit) { navigateBack() }
+                            } else {
+                                EditorScreen(
+                                    context = this@MainActivity,
+                                    source = source,
+                                    onBack = { navigateBack() },
+                                    onAbout = { navigateToAbout() }
+                                )
+                            }
                         }
                         Screen.ABOUT -> {
                             AboutScreen(
