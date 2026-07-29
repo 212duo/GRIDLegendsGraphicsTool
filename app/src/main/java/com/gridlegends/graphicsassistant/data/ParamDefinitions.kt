@@ -61,6 +61,25 @@ object ParamDefinitions {
             options = levelOptions(includeZero = true)
         ),
         GraphicsParam(
+            key = "Graphics/OptimisationResolutionMultiplier",
+            displayName = "渲染分辨率倍率",
+            description = "控制 Graphics 档位的内部渲染倍率。数值越低性能越高，画面越模糊。",
+            controlType = ParamControlType.SLIDER,
+            section = ParamSection.DISPLAY,
+            minValue = 40f,
+            maxValue = 100f,
+            step = 5f,
+            unitSuffix = "%"
+        ),
+        GraphicsParam(
+            key = "VerticalSync",
+            displayName = "垂直同步",
+            description = "使帧率与屏幕刷新率同步，可减少画面撕裂。",
+            controlType = ParamControlType.SWITCH,
+            section = ParamSection.DISPLAY,
+            options = switchOptions()
+        ),
+        GraphicsParam(
             key = "HDR",
             displayName = "HDR",
             description = "仅在屏幕和系统支持 HDR 时启用。",
@@ -117,6 +136,22 @@ object ParamDefinitions {
             section = ParamSection.QUALITY,
             options = mapOf("0" to "关闭", "1" to "开启")
         ),
+        GraphicsParam(
+            key = "AmbientOcclusion",
+            displayName = "环境光遮蔽",
+            description = "增强物体接触处和缝隙的阴影细节。",
+            controlType = ParamControlType.LEVEL_SELECTOR,
+            section = ParamSection.QUALITY,
+            options = levelOptions(includeZero = false)
+        ),
+        GraphicsParam(
+            key = "LightingQuality",
+            displayName = "光照质量",
+            description = "控制场景光照的精细程度。",
+            controlType = ParamControlType.LEVEL_SELECTOR,
+            section = ParamSection.QUALITY,
+            options = levelOptions(includeZero = false)
+        ),
 
         GraphicsParam(
             key = "PostProcess",
@@ -166,6 +201,22 @@ object ParamDefinitions {
             section = ParamSection.POST_PROCESSING,
             options = mapOf("1" to "普通", "3" to "极限")
         ),
+        GraphicsParam(
+            key = "Particles",
+            displayName = "粒子效果",
+            description = "控制烟尘、火花等粒子效果的质量。",
+            controlType = ParamControlType.LEVEL_SELECTOR,
+            section = ParamSection.POST_PROCESSING,
+            options = levelOptions(includeZero = true)
+        ),
+        GraphicsParam(
+            key = "WeatherEffects",
+            displayName = "天气效果",
+            description = "控制雨雪等天气特效的质量。",
+            controlType = ParamControlType.LEVEL_SELECTOR,
+            section = ParamSection.POST_PROCESSING,
+            options = levelOptions(includeZero = false)
+        ),
 
         GraphicsParam(
             key = "ScreenSpaceReflections",
@@ -191,6 +242,14 @@ object ParamDefinitions {
             section = ParamSection.REFLECTIONS,
             options = mapOf("1" to "普通", "2" to "高")
         ),
+        GraphicsParam(
+            key = "Mirrors",
+            displayName = "后视镜",
+            description = "控制车辆后视镜的渲染质量。",
+            controlType = ParamControlType.LEVEL_SELECTOR,
+            section = ParamSection.REFLECTIONS,
+            options = levelOptions(includeZero = true)
+        ),
 
         GraphicsParam(
             key = "PresetOverride",
@@ -212,6 +271,22 @@ object ParamDefinitions {
             key = "Setup/EnableEdgeBlurOnQuarterRes",
             displayName = "低分辨率边缘模糊",
             description = "低分辨率渲染时的边缘柔化效果。关闭后画面更锐，但锯齿可能更明显。",
+            controlType = ParamControlType.SWITCH,
+            section = ParamSection.DETAIL,
+            options = switchOptions()
+        ),
+        GraphicsParam(
+            key = "Skidmarks",
+            displayName = "轮胎印记",
+            description = "控制赛道上轮胎印记的显示质量。",
+            controlType = ParamControlType.LEVEL_SELECTOR,
+            section = ParamSection.DETAIL,
+            options = levelOptions(includeZero = false)
+        ),
+        GraphicsParam(
+            key = "ReduceVisibleRain",
+            displayName = "减少可见雨水",
+            description = "减少画面中的可见雨水效果以降低性能负载。",
             controlType = ParamControlType.SWITCH,
             section = ParamSection.DETAIL,
             options = switchOptions()
