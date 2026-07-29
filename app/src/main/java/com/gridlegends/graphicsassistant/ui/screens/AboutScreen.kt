@@ -91,7 +91,7 @@ fun AboutScreen(
                 )
 
                 Text(
-                    text = "v1.1.4",
+                    text = "v1.2.0",
                     fontSize = 14.sp,
                     color = TextSecondary
                 )
@@ -99,7 +99,7 @@ fun AboutScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "用于读取、备份和修改 GRID Legends 安卓版画质配置",
+                    text = "用于制作、导出和直接修改 GRID Legends 安卓版画质配置",
                     fontSize = 14.sp,
                     color = TextSecondary,
                     textAlign = TextAlign.Center
@@ -110,6 +110,7 @@ fun AboutScreen(
                 InfoCard(title = "主要功能", titleColor = NeonCyan) {
                     FeatureItem("配置读写", "读取游戏 preferences 文件，并尽量保留未管理的原始字段")
                     FeatureItem("画质预设", "内置低配、平衡、高配、4K、HDR 等多组预设")
+                    FeatureItem("离线导出", "无需游戏目录权限，可从 20 份真实配置制作并导出 preferences")
                     FeatureItem("精细调整", "支持帧率、分辨率、纹理、阴影、反射、后处理等参数")
                     FeatureItem("访问方式", "支持 Root、Shizuku 和 SAF，按设备权限情况选择")
                     FeatureItem("自动备份", "保存前会创建 preferences_backup_* 备份文件")
@@ -175,6 +176,7 @@ fun AboutScreen(
                     NoticeItem("GRID Legends、Codemasters、EA、Feral Interactive 等名称和商标归其各自权利方所有。")
                     NoticeItem("修改画质配置可能导致游戏卡顿、闪退或无法进入游戏，请根据设备性能谨慎选择预设。")
                     NoticeItem("保存前会自动创建备份；如果出现异常，可用备份文件恢复原始配置。")
+                    NoticeItem("手动替换 preferences 前请关闭游戏并备份原文件。")
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))

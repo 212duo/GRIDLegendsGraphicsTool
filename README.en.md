@@ -2,9 +2,9 @@
 
 [![简体中文](https://img.shields.io/badge/%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-README-blue)](README.md)
 
-An Android graphics configuration editor for GRID Legends, built with Kotlin and Jetpack Compose.
+An Android tool for creating, exporting, and directly editing GRID Legends graphics configurations, built with Kotlin and Jetpack Compose.
 
-The app edits the GRID Legends Android `preferences` file and provides ready-to-use graphics presets derived from real configuration samples.
+The app provides two distinct workflows: create and export a `preferences` file from bundled real configurations without game-directory permission, or directly read and edit the game configuration through Root, Shizuku, or SAF.
 
 ## Features
 
@@ -12,16 +12,9 @@ The app edits the GRID Legends Android `preferences` file and provides ready-to-
 - Supports the actual registry-style XML structure used by the game.
 - Handles duplicate setting names safely by writing values to the correct section path.
 - Provides manual editing for frame rate, resolution, quality, reflections, post-processing, HDR, SSR, and volumetrics.
-- Includes built-in presets:
-  - Ultra Low 120 FPS
-  - Low 720p 60 FPS
-  - Balanced Quality
-  - Mid-range
-  - High-end
-  - High-end 1080p 120 FPS
-  - Extreme 4K 120 FPS
-  - Extreme 4K 120 FPS HDR
-- Supports Root, Shizuku, and SAF access modes.
+- Includes 20 real configurations across Low, Medium, High, and Extreme groups for creating and exporting graphics files.
+- Exports an extensionless `preferences` file from bundled presets without game-directory permission.
+- Supports Root, Shizuku, and SAF access modes for directly editing the configuration in the game directory.
 - Android 11-15 uses SAF folder authorization by default; if the system picker blocks `Android/data`, you can switch to Shizuku or Root.
 - Android 16 and above uses Shizuku by default to access the game directory.
 
@@ -36,11 +29,26 @@ The app edits the GRID Legends Android `preferences` file and provides ready-to-
 
 ## Usage
 
+### No permission required: create and export a configuration
+
+1. Select **Create a graphics file from presets** on the home screen.
+2. Choose one preset from the 20 real configurations in the Low, Medium, High, and Extreme groups.
+3. Adjust the parameters you need, or export without making changes.
+4. Manually copy the exported extensionless `preferences` file to:
+
+   ```text
+   /sdcard/Android/data/com.feralinteractive.gridlegends_android/files/feral_app_support/preferences
+   ```
+
+Close the game and back up the original file before manually replacing it.
+
+### Permission required: directly edit the game configuration
+
 1. Install and launch GRID Legends at least once so the game creates the config file.
 2. Open this tool and grant folder, Shizuku, or Root access.
 3. Enter the graphics editor.
 4. Adjust parameters manually, or select a preset and tap Apply Preset.
-5. Save changes and restart the game.
+5. Save changes and restart the game. This workflow directly edits the `preferences` file in the game directory.
 
 ## Access Modes
 
@@ -52,19 +60,20 @@ If a ROM blocks `Android/data` selection through SAF, authorization may fail. In
 
 ## Build
 
-This is a single-module Android project. Use Gradle only.
+This is a single-module Android project built only with Gradle.
 
 ```bash
 ./gradlew assembleDebug
 ./gradlew assembleRelease
 ```
 
-The release build is configured in `app/build.gradle.kts`.
+Release build configuration is in `app/build.gradle.kts`.
 
 ## Notes
 
-- Extreme and HDR presets are heavy and may be unstable on low-end devices.
-- A backup file is created before saving.
+- Extreme and HDR presets are demanding; lower-end devices may not run the game reliably.
+- The direct-edit workflow creates a backup before saving.
+- Close the game and back up the original file before manually replacing an exported `preferences` file.
 - The app preserves unmanaged XML values when writing changes.
 - This is an unofficial open-source tool and is not affiliated with or endorsed by Codemasters, EA, or Feral Interactive.
 - GRID Legends, Codemasters, EA, Feral Interactive, and related names or trademarks belong to their respective owners.
