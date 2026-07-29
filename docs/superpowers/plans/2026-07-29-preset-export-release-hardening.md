@@ -29,6 +29,9 @@
 - 修改 `app/src/main/java/com/gridlegends/graphicsassistant/data/PresetModels.kt`、`GraphicsParam.kt`：让保存状态所需模型可序列化。
 - 修改 `app/src/main/java/com/gridlegends/graphicsassistant/MainActivity.kt`：保存路由和编辑来源。
 - 修改 `app/src/main/java/com/gridlegends/graphicsassistant/ui/screens/EditorScreen.kt`：接入可恢复会话、待导出内容和安全日志。
+- 创建 `app/src/main/java/com/gridlegends/graphicsassistant/fileaccess/SafeCommandLog.kt`：只暴露执行元数据的命令日志摘要。
+- 修改 `app/src/main/java/com/gridlegends/graphicsassistant/fileaccess/RootManager.kt`、`RootFileOperator.kt`、`ShizukuFileOperator.kt`：禁止命令、配置输出或 Base64 配置正文进入日志。
+- 创建 `app/src/test/java/com/gridlegends/graphicsassistant/fileaccess/SafeCommandLogTest.kt`：命令日志脱敏回归测试。
 - 修改 `app/src/main/java/com/gridlegends/graphicsassistant/data/PresetRepository.kt`：严格解码并传播取消。
 - 修改 `app/src/main/java/com/gridlegends/graphicsassistant/ui/screens/HomeScreen.kt`：移除滚动列中的 weighted spacer。
 - 修改 `app/src/main/java/com/gridlegends/graphicsassistant/ui/screens/PresetLibraryScreen.kt`、`README.zh-CN.md`、`README.en.md`：说明导出完整配置且保留其他字段。
@@ -124,16 +127,21 @@ git commit -m "fix: 保存预设编辑和导出会话"
 
 - 修改：`app/src/main/java/com/gridlegends/graphicsassistant/MainActivity.kt`
 - 修改：`app/src/main/java/com/gridlegends/graphicsassistant/ui/screens/EditorScreen.kt`
+- 创建：`app/src/main/java/com/gridlegends/graphicsassistant/fileaccess/SafeCommandLog.kt`
+- 修改：`app/src/main/java/com/gridlegends/graphicsassistant/fileaccess/RootManager.kt`
+- 修改：`app/src/main/java/com/gridlegends/graphicsassistant/fileaccess/RootFileOperator.kt`
+- 修改：`app/src/main/java/com/gridlegends/graphicsassistant/fileaccess/ShizukuFileOperator.kt`
+- 创建：`app/src/test/java/com/gridlegends/graphicsassistant/fileaccess/SafeCommandLogTest.kt`
 
 - [ ] **步骤 1：用任务 1 的失败场景检查现有 UI 状态点**
 
 确认现有代码仍有以下不符合项，作为本任务红灯证据记录到报告：
 
 ```powershell
-rg -n "var currentScreen by remember|var editorSource by remember|pendingExportBytes by remember|source=\$source" app/src/main/java/com/gridlegends/graphicsassistant
+rg -n "var currentScreen by remember|var editorSource by remember|pendingExportBytes by remember|source=\$source|out=\$\{|err=\$\{|exec: \$command|execFallback: \$command" app/src/main/java/com/gridlegends/graphicsassistant
 ```
 
-预期：至少命中 `MainActivity.kt` 的普通 `remember`、`EditorScreen.kt` 的普通 pending state 或完整 source 日志。
+预期：至少命中 `MainActivity.kt` 的普通 `remember`、`EditorScreen.kt` 的普通 pending state 或完整 source 日志，以及 Root/Shizuku 执行器记录的命令/输出片段。
 
 - [ ] **步骤 2：保存页面路由和来源**
 
@@ -166,12 +174,26 @@ Log.d("GLGraphics", "EditorScreen: 开始加载 source=$source")
 
 替换为只记录 `source.logSummary()` 的日志；不得把完整来源对象、XML 或参数 Map 传给 Logcat。
 
+先在 `SafeCommandLogTest` 中用包含唯一 Base64/XML sentinel 的命令、标准输出和错误输出调用以下待实现纯函数：
+
+```kotlin
+internal fun safeCommandSummary(
+    mode: String,
+    command: String,
+    output: String,
+    error: String,
+    exitCode: Int
+): String
+```
+
+断言结果遵循 `"ROOT exec commandLength=17 exit=0 outputLength=23 errorLength=0"` 这一精确结构（数字按测试数据的实际长度计算），且不包含任一 sentinel。先运行并确认因函数不存在而 RED，再实现只使用模式、退出码和三个长度的摘要。Root/Shizuku 执行日志必须调用它；不得记录原命令或输出片段。注意写配置命令本身包含整份配置的 Base64，因此仅移除 `cat` 输出不够。
+
 - [ ] **步骤 5：运行聚焦测试和 Debug 编译**
 
 ```powershell
 $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'
 & 'C:\Program Files\Git\bin\bash.exe' ./gradlew testDebugUnitTest assembleDebug
-rg -n "source=\$source|source\.toString\(\)" app/src/main/java/com/gridlegends/graphicsassistant
+rg -n "source=\$source|source\.toString\(\)|out=\$\{|err=\$\{|exec: \$command|execFallback: \$command" app/src/main/java/com/gridlegends/graphicsassistant
 ```
 
 预期：单元测试和 Debug 构建成功；`rg` 无命中。
@@ -180,7 +202,12 @@ rg -n "source=\$source|source\.toString\(\)" app/src/main/java/com/gridlegends/g
 
 ```bash
 git add app/src/main/java/com/gridlegends/graphicsassistant/MainActivity.kt \
-        app/src/main/java/com/gridlegends/graphicsassistant/ui/screens/EditorScreen.kt
+        app/src/main/java/com/gridlegends/graphicsassistant/ui/screens/EditorScreen.kt \
+        app/src/main/java/com/gridlegends/graphicsassistant/fileaccess/SafeCommandLog.kt \
+        app/src/main/java/com/gridlegends/graphicsassistant/fileaccess/RootManager.kt \
+        app/src/main/java/com/gridlegends/graphicsassistant/fileaccess/RootFileOperator.kt \
+        app/src/main/java/com/gridlegends/graphicsassistant/fileaccess/ShizukuFileOperator.kt \
+        app/src/test/java/com/gridlegends/graphicsassistant/fileaccess/SafeCommandLogTest.kt
 git commit -m "fix: 恢复系统保存器期间的编辑状态"
 ```
 
