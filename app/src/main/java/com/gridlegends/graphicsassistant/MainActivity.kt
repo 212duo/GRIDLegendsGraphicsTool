@@ -14,12 +14,13 @@ import com.gridlegends.graphicsassistant.ui.theme.GridLegendsTheme
 import com.gridlegends.graphicsassistant.ui.screens.AboutScreen
 import com.gridlegends.graphicsassistant.ui.screens.EditorScreen
 import com.gridlegends.graphicsassistant.ui.screens.HomeScreen
+import com.gridlegends.graphicsassistant.ui.screens.PresetLibraryScreen
 
 /**
  * 页面路由
  */
 private enum class Screen {
-    HOME, EDITOR, ABOUT
+    HOME, PRESET_LIBRARY, EDITOR, ABOUT
 }
 
 class MainActivity : ComponentActivity() {
@@ -40,7 +41,12 @@ class MainActivity : ComponentActivity() {
 
                     fun navigateBack() {
                         currentScreen = when (currentScreen) {
-                            Screen.EDITOR -> Screen.HOME
+                            Screen.EDITOR -> if (editorSource is EditorSource.BundledPreset) {
+                                Screen.PRESET_LIBRARY
+                            } else {
+                                Screen.HOME
+                            }
+                            Screen.PRESET_LIBRARY -> Screen.HOME
                             Screen.ABOUT -> previousScreen
                             Screen.HOME -> Screen.HOME
                         }
@@ -61,7 +67,17 @@ class MainActivity : ComponentActivity() {
                                     editorSource = EditorSource.LiveConfig(accessMode, path, content)
                                     currentScreen = Screen.EDITOR
                                 },
+                                onPresetExport = { currentScreen = Screen.PRESET_LIBRARY },
                                 onAbout = { navigateToAbout() }
+                            )
+                        }
+                        Screen.PRESET_LIBRARY -> {
+                            PresetLibraryScreen(
+                                onBack = { currentScreen = Screen.HOME },
+                                onPresetSelected = { preset ->
+                                    editorSource = EditorSource.BundledPreset(preset)
+                                    currentScreen = Screen.EDITOR
+                                }
                             )
                         }
                         Screen.EDITOR -> {

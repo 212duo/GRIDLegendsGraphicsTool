@@ -8,6 +8,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -46,6 +48,7 @@ import com.gridlegends.graphicsassistant.ui.theme.*
 fun HomeScreen(
     context: Activity,
     onAuthorized: (configPath: String?, configContent: String?, accessMode: AccessMode) -> Unit,
+    onPresetExport: () -> Unit,
     onAbout: () -> Unit
 ) {
     val safManager = remember { SafManager(context) }
@@ -161,9 +164,10 @@ fun HomeScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Top
         ) {
             // 标题
             Text(
@@ -179,7 +183,33 @@ fun HomeScreen(
                 color = TextPrimary
             )
 
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Button(
+                onClick = onPresetExport,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = NeonCyan,
+                    contentColor = DarkBackground
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(
+                    text = "从预设制作画质文件",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "无需授权游戏目录，制作后导出到下载目录。",
+                color = TextSecondary,
+                fontSize = 13.sp,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(32.dp))
 
             // 游戏安装状态
             StatusCard(
