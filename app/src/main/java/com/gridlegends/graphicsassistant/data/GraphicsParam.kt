@@ -1,5 +1,7 @@
 package com.gridlegends.graphicsassistant.data
 
+import java.io.Serializable
+
 enum class ParamControlType {
     SLIDER,
     SWITCH,
@@ -33,4 +35,4 @@ data class ParamValue(
     val value: String,
     val originalValue: String = value,
     val isModified: Boolean = false
-)
+) : Serializable
