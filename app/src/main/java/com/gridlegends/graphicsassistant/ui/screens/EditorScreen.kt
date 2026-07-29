@@ -3,6 +3,9 @@ package com.gridlegends.graphicsassistant.ui.screens
 import android.app.Activity
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -40,9 +43,7 @@ import com.gridlegends.graphicsassistant.ui.theme.*
 @Composable
 fun EditorScreen(
     context: Activity,
-    configPath: String?,
-    configContent: String?,
-    accessMode: AccessMode,
+    source: EditorSource,
     onBack: () -> Unit,
     onAbout: () -> Unit
 ) {
@@ -60,46 +61,66 @@ fun EditorScreen(
     var isLoading by remember { mutableStateOf(true) }
     var loadError by remember { mutableStateOf<String?>(null) }
     var isSaving by remember { mutableStateOf(false) }
+    val bundledPreset = (source as? EditorSource.BundledPreset)?.preset
+    var pendingExportBytes by remember { mutableStateOf<ByteArray?>(null) }
+    var pendingExportSnapshot by remember { mutableStateOf<Map<String, String>?>(null) }
+    var lastExportedSnapshot by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var showDiscardDialog by remember { mutableStateOf(false) }
+    var showInstallDialog by remember { mutableStateOf(false) }
+
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/octet-stream")
+    ) { uri ->
+        val bytes = pendingExportBytes
+        val snapshot = pendingExportSnapshot
+        pendingExportBytes = null
+        pendingExportSnapshot = null
+
+        if (uri != null && bytes != null && snapshot != null) {
+            try {
+                context.contentResolver.openOutputStream(uri, "wt")?.use { output ->
+                    output.write(bytes)
+                    output.flush()
+                } ?: error("无法打开目标文件")
+                lastExportedSnapshot = snapshot
+                showInstallDialog = true
+            } catch (e: Exception) {
+                Toast.makeText(context, "导出失败：${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
 
     // 加载配置文件
-    LaunchedEffect(Unit) {
-        Log.d("GLGraphics", "EditorScreen: 开始加载 configPath=$configPath, configContent=${configContent?.length ?: "null"} 字符, accessMode=$accessMode")
+    LaunchedEffect(source) {
+        isLoading = true
+        loadError = null
+        rawConfigValues = emptyMap()
+        paramValues = emptyMap()
+        Log.d("GLGraphics", "EditorScreen: 开始加载 source=$source")
         try {
-            val rawValues = if (configContent != null) {
-                Log.d("GLGraphics", "EditorScreen: 使用传入的 configContent (${configContent.length} 字符)")
-                ConfigParser.parse(configContent.byteInputStream())
-            } else {
-                when (accessMode) {
-                    AccessMode.ROOT -> if (configPath != null) {
-                        Log.d("GLGraphics", "EditorScreen: Root 用 configPath 直接读取: $configPath")
-                        rootOp.readConfigFromPath(configPath)
-                    } else {
-                        Log.d("GLGraphics", "EditorScreen: Root 回退到 readConfig()")
-                        rootOp.readConfig()
+            val rawValues = when (val currentSource = source) {
+                is EditorSource.BundledPreset -> currentSource.preset.rawValues
+                is EditorSource.LiveConfig -> if (currentSource.configContent != null) {
+                    Log.d(
+                        "GLGraphics",
+                        "EditorScreen: 使用传入的 configContent (${currentSource.configContent.length} 字符)"
+                    )
+                    ConfigParser.parse(currentSource.configContent.byteInputStream())
+                } else {
+                    when (currentSource.accessMode) {
+                        AccessMode.ROOT -> currentSource.configPath?.let(rootOp::readConfigFromPath)
+                            ?: rootOp.readConfig()
+                        AccessMode.SHIZUKU -> currentSource.configPath?.let(shizukuOp::readConfigFromPath)
+                            ?: shizukuOp.readConfig()
+                        AccessMode.SAF -> safOp.readConfig()
                     }
-                    AccessMode.SHIZUKU -> if (configPath != null) {
-                        Log.d("GLGraphics", "EditorScreen: Shizuku 用 configPath 直接读取: $configPath")
-                        shizukuOp.readConfigFromPath(configPath)
-                    } else {
-                        Log.d("GLGraphics", "EditorScreen: 回退到 shizukuOp.readConfig()")
-                        shizukuOp.readConfig()
-                    }
-                    AccessMode.SAF -> {
-                        Log.d("GLGraphics", "EditorScreen: 使用 SAF readConfig()")
-                        safOp.readConfig()
-                    }
-                }
+                } ?: error("未找到配置文件")
             }
-            Log.d("GLGraphics", "EditorScreen: rawValues=${rawValues?.size ?: "null"} 个参数")
-            if (rawValues != null) {
-                rawConfigValues = rawValues
-                val values = ConfigParser.toParamValues(rawValues)
-                paramValues = values.associateBy { it.key }
-                Log.d("GLGraphics", "EditorScreen: 解析到 ${paramValues.size} 个画质参数")
-            } else {
-                loadError = "未找到配置文件"
-                Log.w("GLGraphics", "EditorScreen: rawValues 为 null")
-            }
+            val parsedValues = ConfigParser.toParamValues(rawValues).associateBy { it.key }
+            rawConfigValues = rawValues
+            paramValues = parsedValues
+            lastExportedSnapshot = parsedValues.mapValues { it.value.value }
+            Log.d("GLGraphics", "EditorScreen: 解析到 ${parsedValues.size} 个画质参数")
         } catch (e: Exception) {
             loadError = "读取配置失败：${e.message}"
             Log.e("GLGraphics", "EditorScreen: 读取异常", e)
@@ -108,8 +129,94 @@ fun EditorScreen(
         }
     }
 
-    // 是否有修改
+    val currentSnapshot = paramValues.mapValues { it.value.value }
     val hasModifications = paramValues.values.any { it.isModified }
+    val hasUnexportedChanges = bundledPreset != null &&
+        lastExportedSnapshot.isNotEmpty() &&
+        currentSnapshot != lastExportedSnapshot
+
+    fun requestBack() {
+        if (hasUnexportedChanges) showDiscardDialog = true else onBack()
+    }
+
+    fun applyPreset(preset: GraphicsPreset) {
+        val next = paramValues.toMutableMap()
+        preset.values.forEach { (key, value) ->
+            val originalValue = next[key]?.originalValue
+                ?: rawConfigValues[key]
+                ?: value
+            next[key] = ParamValue(
+                key = key,
+                value = value,
+                originalValue = originalValue,
+                isModified = value != originalValue
+            )
+        }
+        paramValues = next
+    }
+
+    fun saveLiveConfig(liveSource: EditorSource.LiveConfig) {
+        isSaving = true
+        try {
+            val success = when (liveSource.accessMode) {
+                AccessMode.ROOT -> liveSource.configPath?.let {
+                    rootOp.writeConfigToPath(it, paramValues)
+                } ?: rootOp.writeConfig(paramValues)
+                AccessMode.SHIZUKU -> liveSource.configPath?.let {
+                    shizukuOp.writeConfigToPath(it, paramValues)
+                } ?: shizukuOp.writeConfig(paramValues)
+                AccessMode.SAF -> safOp.writeConfig(paramValues)
+            }
+            if (success) {
+                paramValues = paramValues.mapValues { (_, value) ->
+                    value.copy(originalValue = value.value, isModified = false)
+                }
+                Toast.makeText(
+                    context,
+                    "保存成功！请重启游戏使设置生效",
+                    Toast.LENGTH_LONG
+                ).show()
+            } else {
+                Toast.makeText(context, "保存失败，请检查权限", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            Toast.makeText(context, "保存失败：${e.message}", Toast.LENGTH_SHORT).show()
+        } finally {
+            isSaving = false
+        }
+    }
+
+    fun runBottomAction() {
+        val preset = bundledPreset
+        if (preset != null) {
+            isSaving = true
+            ConfigExporter.build(preset, paramValues).fold(
+                onSuccess = { bytes ->
+                    pendingExportBytes = bytes
+                    pendingExportSnapshot = currentSnapshot
+                    exportLauncher.launch("preferences")
+                },
+                onFailure = { error ->
+                    Toast.makeText(
+                        context,
+                        "导出内容校验失败：${error.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            )
+            isSaving = false
+        } else {
+            saveLiveConfig(source as EditorSource.LiveConfig)
+        }
+    }
+
+    val showBottomAction = when {
+        isLoading || loadError != null -> false
+        bundledPreset != null -> true
+        else -> hasModifications
+    }
+
+    BackHandler { requestBack() }
 
     Box(
         modifier = Modifier
@@ -119,9 +226,9 @@ fun EditorScreen(
         Column(modifier = Modifier.fillMaxSize()) {
             // 顶部栏
             TopAppBar(
-                title = { Text("画质编辑") },
+                title = { Text(if (bundledPreset != null) "制作画质文件" else "画质编辑") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = ::requestBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "返回"
@@ -179,24 +286,14 @@ fun EditorScreen(
                         verticalArrangement = Arrangement.spacedBy(0.dp),
                         contentPadding = PaddingValues(vertical = 8.dp)
                     ) {
-                        item(key = "graphics_presets") {
-                            PresetCard(
-                                onApplyPreset = { preset ->
-                                    val next = paramValues.toMutableMap()
-                                    preset.values.forEach { (key, value) ->
-                                        val originalValue = next[key]?.originalValue
-                                            ?: rawConfigValues[key]
-                                            ?: value
-                                        next[key] = ParamValue(
-                                            key = key,
-                                            value = value,
-                                            originalValue = originalValue,
-                                            isModified = value != originalValue
-                                        )
-                                    }
-                                    paramValues = next
-                                }
-                            )
+                        if (bundledPreset != null) {
+                            item(key = "preset_source") {
+                                PresetSourceBanner(bundledPreset)
+                            }
+                        } else {
+                            item(key = "graphics_presets") {
+                                PresetCard(onApplyPreset = ::applyPreset)
+                            }
                         }
 
                         // 按分区显示参数
@@ -237,25 +334,27 @@ fun EditorScreen(
                             }
                         }
 
-                        item(key = "about_link") {
-                            TextButton(
-                                onClick = onAbout,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 12.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Info,
-                                    contentDescription = null,
-                                    tint = TextSecondary,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "关于本工具",
-                                    color = TextSecondary,
-                                    fontSize = 14.sp
-                                )
+                        if (bundledPreset == null) {
+                            item(key = "about_link") {
+                                TextButton(
+                                    onClick = onAbout,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Info,
+                                        contentDescription = null,
+                                        tint = TextSecondary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "关于本工具",
+                                        color = TextSecondary,
+                                        fontSize = 14.sp
+                                    )
+                                }
                             }
                         }
 
@@ -267,56 +366,14 @@ fun EditorScreen(
         }
 
         // 底部保存按钮
-        if (hasModifications) {
+        if (showBottomAction) {
             Surface(
                 modifier = Modifier.align(Alignment.BottomCenter),
                 color = DarkSurface,
                 shadowElevation = 8.dp
             ) {
                 Button(
-                    onClick = {
-                        isSaving = true
-                        try {
-                            val success = when (accessMode) {
-                                AccessMode.ROOT -> if (configPath != null) {
-                                    rootOp.writeConfigToPath(configPath, paramValues)
-                                } else {
-                                    rootOp.writeConfig(paramValues)
-                                }
-                                AccessMode.SHIZUKU -> if (configPath != null) {
-                                    shizukuOp.writeConfigToPath(configPath, paramValues)
-                                } else {
-                                    shizukuOp.writeConfig(paramValues)
-                                }
-                                AccessMode.SAF -> safOp.writeConfig(paramValues)
-                            }
-                            if (success) {
-                                // 更新原始值
-                                paramValues = paramValues.mapValues { (_, v) ->
-                                    v.copy(originalValue = v.value, isModified = false)
-                                }
-                                Toast.makeText(
-                                    context,
-                                    "保存成功！请重启游戏使设置生效",
-                                    Toast.LENGTH_LONG
-                                ).show()
-                            } else {
-                                Toast.makeText(
-                                    context,
-                                    "保存失败，请检查权限",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
-                        } catch (e: Exception) {
-                            Toast.makeText(
-                                context,
-                                "保存失败：${e.message}",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        } finally {
-                            isSaving = false
-                        }
-                    },
+                    onClick = ::runBottomAction,
                     enabled = !isSaving,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -342,7 +399,7 @@ fun EditorScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "保存设置",
+                            text = if (bundledPreset != null) "导出 preferences" else "保存设置",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -350,6 +407,40 @@ fun EditorScreen(
                 }
             }
         }
+    }
+
+    if (showDiscardDialog) {
+        AlertDialog(
+            onDismissRequest = { showDiscardDialog = false },
+            title = { Text("放弃未导出的修改？") },
+            text = { Text("返回后，本次尚未导出的修改会丢失。") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDiscardDialog = false
+                    onBack()
+                }) { Text("放弃") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDiscardDialog = false }) { Text("继续编辑") }
+            }
+        )
+    }
+
+    if (showInstallDialog) {
+        AlertDialog(
+            onDismissRequest = { showInstallDialog = false },
+            title = { Text("导出成功") },
+            text = {
+                Text(
+                    "请先关闭游戏并备份原文件，再将导出的 preferences 复制到：\n\n" +
+                        "Android/data/com.feralinteractive.gridlegends_android/" +
+                        "files/feral_app_support/preferences"
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showInstallDialog = false }) { Text("知道了") }
+            }
+        )
     }
 }
 

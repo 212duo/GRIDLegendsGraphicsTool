@@ -9,8 +9,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import com.gridlegends.graphicsassistant.data.EditorSource
 import com.gridlegends.graphicsassistant.ui.theme.GridLegendsTheme
-import com.gridlegends.graphicsassistant.fileaccess.AccessMode
 import com.gridlegends.graphicsassistant.ui.screens.AboutScreen
 import com.gridlegends.graphicsassistant.ui.screens.EditorScreen
 import com.gridlegends.graphicsassistant.ui.screens.HomeScreen
@@ -31,10 +31,7 @@ class MainActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     var currentScreen by remember { mutableStateOf(Screen.HOME) }
                     var previousScreen by remember { mutableStateOf(Screen.HOME) }
-                    // 保存找到的配置文件路径，在页面间传递
-                    var configFilePath by remember { mutableStateOf<String?>(null) }
-                    var configFileContent by remember { mutableStateOf<String?>(null) }
-                    var configAccessMode by remember { mutableStateOf(AccessMode.SAF) }
+                    var editorSource by remember { mutableStateOf<EditorSource?>(null) }
 
                     fun navigateToAbout() {
                         previousScreen = currentScreen
@@ -49,7 +46,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    BackHandler(enabled = currentScreen != Screen.HOME) {
+                    BackHandler(enabled = currentScreen != Screen.HOME && currentScreen != Screen.EDITOR) {
                         navigateBack()
                     }
 
@@ -58,20 +55,16 @@ class MainActivity : ComponentActivity() {
                             HomeScreen(
                                 context = this@MainActivity,
                                 onAuthorized = { path, content, accessMode ->
-                                    configFilePath = path
-                                    configFileContent = content
-                                    configAccessMode = accessMode
+                                    editorSource = EditorSource.LiveConfig(accessMode, path, content)
                                     currentScreen = Screen.EDITOR
                                 },
                                 onAbout = { navigateToAbout() }
                             )
                         }
-                        Screen.EDITOR -> {
+                        Screen.EDITOR -> editorSource?.let { source ->
                             EditorScreen(
                                 context = this@MainActivity,
-                                configPath = configFilePath,
-                                configContent = configFileContent,
-                                accessMode = configAccessMode,
+                                source = source,
                                 onBack = { navigateBack() },
                                 onAbout = { navigateToAbout() }
                             )
