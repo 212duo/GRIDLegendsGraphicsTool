@@ -13,7 +13,7 @@ The app provides two distinct workflows: create and export a `preferences` file 
 - Handles duplicate setting names safely by writing values to the correct section path.
 - Provides manual editing for frame rate, resolution, quality, reflections, post-processing, HDR, SSR, and volumetrics.
 - Includes 20 real configurations across Low, Medium, High, and Extreme groups for creating and exporting graphics files.
-- Exports an extensionless `preferences` file from bundled presets without game-directory permission.
+- Exports the complete, extensionless `preferences` file from bundled presets without game-directory permission, retaining the other settings in the preset file.
 - Supports Root, Shizuku, and SAF access modes for directly editing the configuration in the game directory.
 - Android 11-15 uses SAF folder authorization by default; if the system picker blocks `Android/data`, you can switch to Shizuku or Root.
 - Android 16 and above uses Shizuku by default to access the game directory.
@@ -41,6 +41,7 @@ The app provides two distinct workflows: create and export a `preferences` file 
    ```
 
 Close the game and back up the original file before manually replacing it.
+The export is a complete `preferences` file and retains the other settings in the selected preset file.
 
 ### Permission required: directly edit the game configuration
 

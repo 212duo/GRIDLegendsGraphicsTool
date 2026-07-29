@@ -111,7 +111,7 @@ fun PresetLibraryScreen(
         ) {
             item {
                 Text(
-                    text = "无需授权游戏目录。选择一个真实配置作为基础，修改后导出 preferences。",
+                    text = "无需授权游戏目录。选择一个真实配置作为基础，修改后导出完整 preferences，并保留预设文件中的其他设置。",
                     color = TextSecondary,
                     fontSize = 14.sp,
                     modifier = Modifier.padding(4.dp)

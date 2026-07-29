@@ -628,7 +628,7 @@ fun HomeScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(32.dp))
 
             // 关于按钮
             TextButton(
