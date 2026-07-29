@@ -12,6 +12,8 @@ The app provides two distinct workflows: create and export a `preferences` file 
 - Supports the actual registry-style XML structure used by the game.
 - Handles duplicate setting names safely by writing values to the correct section path.
 - Provides manual editing for frame rate, resolution, quality, reflections, post-processing, HDR, SSR, and volumetrics.
+- Adds nine adjustable options: ambient occlusion, lighting quality, mirrors, particle effects, tyre marks, weather effects, render scale, vertical sync, and reduced rain.
+- On Android, the app does not actively modify MetalFX, avoiding writes to a graphics option that does not apply to the platform.
 - Includes 20 real configurations across Low, Medium, High, and Extreme groups for creating and exporting graphics files.
 - Exports the complete, extensionless `preferences` file from bundled presets without game-directory permission, retaining the other settings in the preset file.
 - Supports Root, Shizuku, and SAF access modes for directly editing the configuration in the game directory.

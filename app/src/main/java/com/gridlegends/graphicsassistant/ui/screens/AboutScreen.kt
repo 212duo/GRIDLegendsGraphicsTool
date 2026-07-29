@@ -91,7 +91,7 @@ fun AboutScreen(
                 )
 
                 Text(
-                    text = "v1.2.0",
+                    text = "v1.3.0",
                     fontSize = 14.sp,
                     color = TextSecondary
                 )
