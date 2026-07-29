@@ -149,7 +149,7 @@ object ParamDefinitions {
             displayName = "光照质量",
             description = "控制场景光照的精细程度。",
             controlType = ParamControlType.LEVEL_SELECTOR,
-            section = ParamSection.QUALITY,
+            section = ParamSection.REFLECTIONS,
             options = levelOptions(includeZero = false)
         ),
 
@@ -288,7 +288,7 @@ object ParamDefinitions {
             displayName = "减少可见雨水",
             description = "减少画面中的可见雨水效果以降低性能负载。",
             controlType = ParamControlType.SWITCH,
-            section = ParamSection.DETAIL,
+            section = ParamSection.POST_PROCESSING,
             options = switchOptions()
         )
     )
