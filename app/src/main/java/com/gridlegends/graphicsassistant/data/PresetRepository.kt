@@ -48,7 +48,7 @@ class PresetRepository(private val context: Context) {
                 .let(Result.Companion::success)
             } catch (error: CancellationException) {
                 throw error
-            } catch (error: Throwable) {
+            } catch (error: Exception) {
                 Result.failure(error)
             }
         }
