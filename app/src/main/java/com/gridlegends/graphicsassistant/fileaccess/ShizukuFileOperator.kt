@@ -53,7 +53,6 @@ class ShizukuFileOperator(
         private set
 
     private fun exec(command: String): Pair<String, Int> {
-        log("exec: $command")
         return try {
             val method = getNewProcessMethod()
             if (method == null) {
@@ -64,16 +63,15 @@ class ShizukuFileOperator(
             val output = process.inputStream.bufferedReader().readText()
             val error = process.errorStream.bufferedReader().readText()
             val exitCode = process.waitFor()
-            log("exec exit=$exitCode out=${output.take(100)} err=${error.take(100)}")
+            log(safeCommandSummary("SHIZUKU", command, output, error, exitCode))
             Pair(output, exitCode)
         } catch (e: Exception) {
-            log("ERROR exec: ${e.javaClass.simpleName}: ${e.message}")
+            log("ERROR exec failed type=${e.javaClass.simpleName}")
             Pair("", -1)
         }
     }
 
     private fun execFallback(command: String): Pair<String, Int> {
-        log("execFallback: $command")
         return try {
             val cls = Class.forName("rikka.shizuku.ShizukuRemoteProcess")
             val constructor = cls.getDeclaredConstructor(Array<String>::class.java)
@@ -81,10 +79,10 @@ class ShizukuFileOperator(
             val process = constructor.newInstance(arrayOf("sh", "-c", command)) as Process
             val output = process.inputStream.bufferedReader().readText()
             val exitCode = process.waitFor()
-            log("execFallback exit=$exitCode out=${output.take(100)}")
+            log(safeCommandSummary("SHIZUKU", command, output, "", exitCode))
             Pair(output, exitCode)
         } catch (e: Exception) {
-            log("ERROR fallback: ${e.javaClass.simpleName}: ${e.message}")
+            log("ERROR fallback failed type=${e.javaClass.simpleName}")
             Pair("exec error: ${e.message}", -1)
         }
     }

@@ -128,7 +128,9 @@ fun HomeScreen(
                 configFound = false
             }
             AccessMode.SAF -> if (safAuthorized) {
-                configFound = safManager.findConfigFile() != null
+                val configFile = safManager.findConfigFile()
+                foundConfigPath = configFile?.uri?.toString()
+                configFound = configFile != null
                 Log.d("GLGraphics", "HomeScreen: SAF configFound=$configFound")
             } else {
                 configFound = false

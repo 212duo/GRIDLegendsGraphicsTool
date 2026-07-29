@@ -8,6 +8,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import com.gridlegends.graphicsassistant.data.EditorSource
 import com.gridlegends.graphicsassistant.ui.theme.GridLegendsTheme
@@ -30,9 +31,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             GridLegendsTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    var currentScreen by remember { mutableStateOf(Screen.HOME) }
-                    var previousScreen by remember { mutableStateOf(Screen.HOME) }
-                    var editorSource by remember { mutableStateOf<EditorSource?>(null) }
+                    var currentScreen by rememberSaveable { mutableStateOf(Screen.HOME) }
+                    var previousScreen by rememberSaveable { mutableStateOf(Screen.HOME) }
+                    var editorSource by rememberSaveable { mutableStateOf<EditorSource?>(null) }
 
                     fun navigateToAbout() {
                         previousScreen = currentScreen

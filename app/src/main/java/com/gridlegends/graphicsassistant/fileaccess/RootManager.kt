@@ -23,14 +23,17 @@ class RootManager {
             val output = process.inputStream.bufferedReader().readText()
             val error = process.errorStream.bufferedReader().readText()
             val exitCode = process.waitFor()
+            Log.d(
+                "GLGraphics",
+                safeCommandSummary("ROOT", command, output, error, exitCode)
+            )
             val merged = buildString {
                 append(output)
                 if (error.isNotBlank()) append(error)
             }
-            Log.d("GLGraphics", "root exit=$exitCode out=${merged.take(120)}")
             RootCommandResult(merged, exitCode)
         } catch (e: Exception) {
-            Log.d("GLGraphics", "root error=${e.javaClass.simpleName}: ${e.message}")
+            Log.d("GLGraphics", "ROOT exec failed type=${e.javaClass.simpleName}")
             RootCommandResult(e.message.orEmpty(), -1)
         }
     }

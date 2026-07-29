@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -55,48 +56,51 @@ fun EditorScreen(
     val rootOp = remember { RootFileOperator(rootManager) }
     val safOp = remember { FileOperator(context, safManager) }
 
-    // 参数当前值状态
-    var paramValues by remember { mutableStateOf(emptyMap<String, ParamValue>()) }
-    var rawConfigValues by remember { mutableStateOf(emptyMap<String, String>()) }
-    var isLoading by remember { mutableStateOf(true) }
-    var loadError by remember { mutableStateOf<String?>(null) }
+    val sourceKey = source.stableKey()
+    var session by rememberSaveable(sourceKey) {
+        mutableStateOf(EditorSessionState(sourceKey = sourceKey))
+    }
     var isSaving by remember { mutableStateOf(false) }
     val bundledPreset = (source as? EditorSource.BundledPreset)?.preset
-    var pendingExportBytes by remember { mutableStateOf<ByteArray?>(null) }
-    var pendingExportSnapshot by remember { mutableStateOf<Map<String, String>?>(null) }
-    var lastExportedSnapshot by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
-    var showDiscardDialog by remember { mutableStateOf(false) }
-    var showInstallDialog by remember { mutableStateOf(false) }
+    var showDiscardDialog by rememberSaveable { mutableStateOf(false) }
+    var showInstallDialog by rememberSaveable { mutableStateOf(false) }
+
+    val paramValues = session.paramValues
+    val rawConfigValues = session.rawConfigValues
+    val isLoading = !session.isInitialized && session.loadError == null
+    val loadError = session.loadError
 
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/octet-stream")
     ) { uri ->
-        val bytes = pendingExportBytes
-        val snapshot = pendingExportSnapshot
-        pendingExportBytes = null
-        pendingExportSnapshot = null
-
-        if (uri != null && bytes != null && snapshot != null) {
-            try {
-                context.contentResolver.openOutputStream(uri, "wt")?.use { output ->
-                    output.write(bytes)
-                    output.flush()
-                } ?: error("无法打开目标文件")
-                lastExportedSnapshot = snapshot
-                showInstallDialog = true
-            } catch (e: Exception) {
-                Toast.makeText(context, "导出失败：${e.message}", Toast.LENGTH_LONG).show()
+        if (uri == null) {
+            session = session.cancelExport()
+        } else {
+            val bytes = session.pendingExportBytes
+            val snapshot = session.pendingExportSnapshot
+            if (bytes == null || snapshot == null) {
+                session = session.cancelExport()
+                Toast.makeText(context, "导出状态已丢失，请重新导出", Toast.LENGTH_LONG).show()
+            } else {
+                try {
+                    context.contentResolver.openOutputStream(uri, "wt")?.use { output ->
+                        output.write(bytes)
+                        output.flush()
+                    } ?: error("无法打开目标文件")
+                    session = session.completeExport()
+                    showInstallDialog = true
+                } catch (e: Exception) {
+                    session = session.cancelExport()
+                    Toast.makeText(context, "导出失败：${e.message}", Toast.LENGTH_LONG).show()
+                }
             }
         }
     }
 
     // 加载配置文件
-    LaunchedEffect(source) {
-        isLoading = true
-        loadError = null
-        rawConfigValues = emptyMap()
-        paramValues = emptyMap()
-        Log.d("GLGraphics", "EditorScreen: 开始加载 source=$source")
+    LaunchedEffect(sourceKey) {
+        if (session.isInitialized || session.loadError != null) return@LaunchedEffect
+        Log.d("GLGraphics", "EditorScreen: 开始加载 ${source.logSummary()}")
         try {
             val rawValues = when (val currentSource = source) {
                 is EditorSource.BundledPreset -> currentSource.preset.rawValues
@@ -117,23 +121,27 @@ fun EditorScreen(
                 } ?: error("未找到配置文件")
             }
             val parsedValues = ConfigParser.toParamValues(rawValues).associateBy { it.key }
-            rawConfigValues = rawValues
-            paramValues = parsedValues
-            lastExportedSnapshot = parsedValues.mapValues { it.value.value }
+            session = EditorSessionState(
+                sourceKey = sourceKey,
+                rawConfigValues = rawValues,
+                paramValues = parsedValues,
+                isInitialized = true,
+                lastExportedSnapshot = parsedValues.mapValues { it.value.value }
+            )
             Log.d("GLGraphics", "EditorScreen: 解析到 ${parsedValues.size} 个画质参数")
         } catch (e: Exception) {
-            loadError = "读取配置失败：${e.message}"
+            session = session.copyForEditor(
+                loadError = "读取配置失败：${e.message}"
+            )
             Log.e("GLGraphics", "EditorScreen: 读取异常", e)
-        } finally {
-            isLoading = false
         }
     }
 
     val currentSnapshot = paramValues.mapValues { it.value.value }
     val hasModifications = paramValues.values.any { it.isModified }
     val hasUnexportedChanges = bundledPreset != null &&
-        lastExportedSnapshot.isNotEmpty() &&
-        currentSnapshot != lastExportedSnapshot
+        session.lastExportedSnapshot.isNotEmpty() &&
+        currentSnapshot != session.lastExportedSnapshot
 
     fun requestBack() {
         if (hasUnexportedChanges) showDiscardDialog = true else onBack()
@@ -152,7 +160,7 @@ fun EditorScreen(
                 isModified = value != originalValue
             )
         }
-        paramValues = next
+        session = session.copyForEditor(paramValues = next)
     }
 
     fun saveLiveConfig(liveSource: EditorSource.LiveConfig) {
@@ -168,9 +176,11 @@ fun EditorScreen(
                 AccessMode.SAF -> safOp.writeConfig(paramValues)
             }
             if (success) {
-                paramValues = paramValues.mapValues { (_, value) ->
-                    value.copy(originalValue = value.value, isModified = false)
-                }
+                session = session.copyForEditor(
+                    paramValues = paramValues.mapValues { (_, value) ->
+                        value.copy(originalValue = value.value, isModified = false)
+                    }
+                )
                 Toast.makeText(
                     context,
                     "保存成功！请重启游戏使设置生效",
@@ -192,8 +202,7 @@ fun EditorScreen(
                 isSaving = true
                 ConfigExporter.build(source.preset, paramValues).fold(
                     onSuccess = { bytes ->
-                        pendingExportBytes = bytes
-                        pendingExportSnapshot = currentSnapshot
+                        session = session.beginExport(bytes, currentSnapshot)
                         exportLauncher.launch("preferences")
                     },
                     onFailure = { error ->
@@ -239,9 +248,11 @@ fun EditorScreen(
                     // 恢复默认按钮
                     IconButton(
                         onClick = {
-                            paramValues = paramValues.mapValues { (_, v) ->
-                                v.copy(value = v.originalValue, isModified = false)
-                            }
+                            session = session.copyForEditor(
+                                paramValues = paramValues.mapValues { (_, v) ->
+                                    v.copy(value = v.originalValue, isModified = false)
+                                }
+                            )
                         }
                     ) {
                         Icon(
@@ -316,15 +327,17 @@ fun EditorScreen(
                                                     param = param,
                                                     paramValue = paramValue,
                                                     onValueChange = { newValue ->
-                                                        paramValues = paramValues.toMutableMap().apply {
-                                                            put(
-                                                                param.key,
-                                                                paramValue.copy(
-                                                                    value = newValue,
-                                                                    isModified = newValue != paramValue.originalValue
+                                                        session = session.copyForEditor(
+                                                            paramValues = paramValues.toMutableMap().apply {
+                                                                put(
+                                                                    param.key,
+                                                                    paramValue.copy(
+                                                                        value = newValue,
+                                                                        isModified = newValue != paramValue.originalValue
+                                                                    )
                                                                 )
+                                                            }
                                                             )
-                                                        }
                                                     }
                                                 )
                                             }
@@ -443,6 +456,28 @@ fun EditorScreen(
         )
     }
 }
+
+private fun EditorSource.stableKey(): String = when (this) {
+    is EditorSource.LiveConfig -> "live:$accessMode:${configPath.orEmpty()}"
+    is EditorSource.BundledPreset -> "preset:${preset.metadata.id}"
+}
+
+private fun EditorSessionState.copyForEditor(
+    rawConfigValues: Map<String, String> = this.rawConfigValues,
+    paramValues: Map<String, ParamValue> = this.paramValues,
+    isInitialized: Boolean = this.isInitialized,
+    loadError: String? = this.loadError,
+    lastExportedSnapshot: Map<String, String> = this.lastExportedSnapshot
+): EditorSessionState = EditorSessionState(
+    sourceKey = sourceKey,
+    rawConfigValues = rawConfigValues,
+    paramValues = paramValues,
+    isInitialized = isInitialized,
+    loadError = loadError,
+    pendingExportBytes = pendingExportBytes,
+    pendingExportSnapshot = pendingExportSnapshot,
+    lastExportedSnapshot = lastExportedSnapshot
+)
 
 /**
  * 单个参数项
