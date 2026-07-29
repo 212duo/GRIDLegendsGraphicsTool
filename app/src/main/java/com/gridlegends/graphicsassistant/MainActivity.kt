@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import com.gridlegends.graphicsassistant.data.EditorRouteState
+import com.gridlegends.graphicsassistant.data.EditorSessionStore
 import com.gridlegends.graphicsassistant.data.EditorSource
 import com.gridlegends.graphicsassistant.ui.theme.GridLegendsTheme
 import com.gridlegends.graphicsassistant.ui.screens.AboutScreen
@@ -35,9 +36,14 @@ class MainActivity : ComponentActivity() {
                     var currentScreen by rememberSaveable { mutableStateOf(Screen.HOME) }
                     var previousScreen by rememberSaveable { mutableStateOf(Screen.HOME) }
                     var editorRoute by rememberSaveable { mutableStateOf<EditorRouteState?>(null) }
+                    val editorSessionStore = remember {
+                        EditorSessionStore(editorRoute) { nextRoute ->
+                            editorRoute = nextRoute
+                        }
+                    }
 
                     fun openEditor(source: EditorSource) {
-                        editorRoute = EditorRouteState.open(source)
+                        editorSessionStore.open(source)
                         currentScreen = Screen.EDITOR
                     }
 
@@ -94,9 +100,7 @@ class MainActivity : ComponentActivity() {
                                     context = this@MainActivity,
                                     source = route.source,
                                     session = route.session,
-                                    onSessionChange = { nextSession ->
-                                        editorRoute = editorRoute?.withSession(nextSession)
-                                    },
+                                    sessionStore = editorSessionStore,
                                     onBack = { navigateBack() },
                                     onAbout = { navigateToAbout() }
                                 )

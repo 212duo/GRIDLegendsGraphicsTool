@@ -46,7 +46,7 @@ fun EditorScreen(
     context: Activity,
     source: EditorSource,
     session: EditorSessionState,
-    onSessionChange: (EditorSessionState) -> Unit,
+    sessionStore: EditorSessionStore,
     onBack: () -> Unit,
     onAbout: () -> Unit
 ) {
@@ -65,7 +65,6 @@ fun EditorScreen(
     var showInstallDialog by rememberSaveable { mutableStateOf(false) }
 
     val paramValues = session.paramValues
-    val rawConfigValues = session.rawConfigValues
     val isLoading = !session.isInitialized && session.loadError == null
     val loadError = session.loadError
 
@@ -73,12 +72,13 @@ fun EditorScreen(
         contract = ActivityResultContracts.CreateDocument("application/octet-stream")
     ) { uri ->
         if (uri == null) {
-            onSessionChange(session.cancelExport())
+            sessionStore.updateSession(sourceKey) { it.cancelExport() }
         } else {
-            val bytes = session.pendingExportBytes
-            val snapshot = session.pendingExportSnapshot
+            val currentSession = sessionStore.currentSession(sourceKey)
+            val bytes = currentSession?.pendingExportBytes
+            val snapshot = currentSession?.pendingExportSnapshot
             if (bytes == null || snapshot == null) {
-                onSessionChange(session.cancelExport())
+                sessionStore.updateSession(sourceKey) { it.cancelExport() }
                 Toast.makeText(context, "导出状态已丢失，请重新导出", Toast.LENGTH_LONG).show()
             } else {
                 try {
@@ -86,10 +86,10 @@ fun EditorScreen(
                         output.write(bytes)
                         output.flush()
                     } ?: error("无法打开目标文件")
-                    onSessionChange(session.completeExport())
+                    sessionStore.updateSession(sourceKey) { it.completeExport() }
                     showInstallDialog = true
                 } catch (e: Exception) {
-                    onSessionChange(session.cancelExport())
+                    sessionStore.updateSession(sourceKey) { it.cancelExport() }
                     Toast.makeText(context, "导出失败：${e.message}", Toast.LENGTH_LONG).show()
                 }
             }
@@ -98,7 +98,8 @@ fun EditorScreen(
 
     // 加载配置文件
     LaunchedEffect(sourceKey) {
-        if (session.isInitialized || session.loadError != null) return@LaunchedEffect
+        val currentSession = sessionStore.currentSession(sourceKey) ?: return@LaunchedEffect
+        if (currentSession.isInitialized || currentSession.loadError != null) return@LaunchedEffect
         Log.d("GLGraphics", "EditorScreen: 开始加载 ${source.logSummary()}")
         try {
             val rawValues = when (val currentSource = source) {
@@ -120,18 +121,20 @@ fun EditorScreen(
                 } ?: error("未找到配置文件")
             }
             val parsedValues = ConfigParser.toParamValues(rawValues).associateBy { it.key }
-            onSessionChange(EditorSessionState(
-                sourceKey = sourceKey,
-                rawConfigValues = rawValues,
-                paramValues = parsedValues,
-                isInitialized = true,
-                lastExportedSnapshot = parsedValues.mapValues { it.value.value }
-            ))
+            sessionStore.updateSession(sourceKey) {
+                EditorSessionState(
+                    sourceKey = sourceKey,
+                    rawConfigValues = rawValues,
+                    paramValues = parsedValues,
+                    isInitialized = true,
+                    lastExportedSnapshot = parsedValues.mapValues { it.value.value }
+                )
+            }
             Log.d("GLGraphics", "EditorScreen: 解析到 ${parsedValues.size} 个画质参数")
         } catch (e: Exception) {
-            onSessionChange(session.copyForEditor(
-                loadError = "读取配置失败：${e.message}"
-            ))
+            sessionStore.updateSession(sourceKey) {
+                it.copyForEditor(loadError = "读取配置失败：${e.message}")
+            }
             Log.e("GLGraphics", "EditorScreen: 读取异常", e)
         }
     }
@@ -147,19 +150,21 @@ fun EditorScreen(
     }
 
     fun applyPreset(preset: GraphicsPreset) {
-        val next = paramValues.toMutableMap()
-        preset.values.forEach { (key, value) ->
-            val originalValue = next[key]?.originalValue
-                ?: rawConfigValues[key]
-                ?: value
-            next[key] = ParamValue(
-                key = key,
-                value = value,
-                originalValue = originalValue,
-                isModified = value != originalValue
-            )
+        sessionStore.updateSession(sourceKey) { current ->
+            val next = current.paramValues.toMutableMap()
+            preset.values.forEach { (key, value) ->
+                val originalValue = next[key]?.originalValue
+                    ?: current.rawConfigValues[key]
+                    ?: value
+                next[key] = ParamValue(
+                    key = key,
+                    value = value,
+                    originalValue = originalValue,
+                    isModified = value != originalValue
+                )
+            }
+            current.copyForEditor(paramValues = next)
         }
-        onSessionChange(session.copyForEditor(paramValues = next))
     }
 
     fun saveLiveConfig(liveSource: EditorSource.LiveConfig) {
@@ -175,11 +180,13 @@ fun EditorScreen(
                 AccessMode.SAF -> safOp.writeConfig(paramValues)
             }
             if (success) {
-                onSessionChange(session.copyForEditor(
-                    paramValues = paramValues.mapValues { (_, value) ->
-                        value.copy(originalValue = value.value, isModified = false)
-                    }
-                ))
+                sessionStore.updateSession(sourceKey) { current ->
+                    current.copyForEditor(
+                        paramValues = current.paramValues.mapValues { (_, value) ->
+                            value.copy(originalValue = value.value, isModified = false)
+                        }
+                    )
+                }
                 Toast.makeText(
                     context,
                     "保存成功！请重启游戏使设置生效",
@@ -199,10 +206,28 @@ fun EditorScreen(
         when (source) {
             is EditorSource.BundledPreset -> {
                 isSaving = true
-                ConfigExporter.build(source.preset, paramValues).fold(
+                val exportSession = sessionStore.currentSession(sourceKey)
+                val exportParamValues = exportSession?.paramValues
+                if (exportParamValues == null) {
+                    Toast.makeText(context, "导出状态已丢失，请重新导出", Toast.LENGTH_LONG).show()
+                    isSaving = false
+                    return
+                }
+                val exportSnapshot = exportParamValues.mapValues { it.value.value }
+                ConfigExporter.build(source.preset, exportParamValues).fold(
                     onSuccess = { bytes ->
-                        onSessionChange(session.beginExport(bytes, currentSnapshot))
-                        exportLauncher.launch("preferences")
+                        val pendingSession = sessionStore.updateSession(sourceKey) { current ->
+                            current.beginExport(bytes, exportSnapshot)
+                        }
+                        if (pendingSession == null) {
+                            Toast.makeText(
+                                context,
+                                "导出状态已丢失，请重新导出",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        } else {
+                            exportLauncher.launch("preferences")
+                        }
                     },
                     onFailure = { error ->
                         Toast.makeText(
@@ -247,11 +272,13 @@ fun EditorScreen(
                     // 恢复默认按钮
                     IconButton(
                         onClick = {
-                            onSessionChange(session.copyForEditor(
-                                paramValues = paramValues.mapValues { (_, v) ->
-                                    v.copy(value = v.originalValue, isModified = false)
-                                }
-                            ))
+                            sessionStore.updateSession(sourceKey) { current ->
+                                current.copyForEditor(
+                                    paramValues = current.paramValues.mapValues { (_, value) ->
+                                        value.copy(value = value.originalValue, isModified = false)
+                                    }
+                                )
+                            }
                         }
                     ) {
                         Icon(
@@ -326,17 +353,21 @@ fun EditorScreen(
                                                     param = param,
                                                     paramValue = paramValue,
                                                     onValueChange = { newValue ->
-                                                        onSessionChange(session.copyForEditor(
-                                                            paramValues = paramValues.toMutableMap().apply {
-                                                                put(
-                                                                    param.key,
-                                                                    paramValue.copy(
-                                                                        value = newValue,
-                                                                        isModified = newValue != paramValue.originalValue
+                                                        sessionStore.updateSession(sourceKey) { current ->
+                                                            val currentValue = current.paramValues[param.key]
+                                                                ?: return@updateSession current
+                                                            current.copyForEditor(
+                                                                paramValues = current.paramValues.toMutableMap().apply {
+                                                                    put(
+                                                                        param.key,
+                                                                        currentValue.copy(
+                                                                            value = newValue,
+                                                                            isModified = newValue != currentValue.originalValue
+                                                                        )
                                                                     )
-                                                                )
-                                                            }
-                                                            ))
+                                                                }
+                                                            )
+                                                        }
                                                     }
                                                 )
                                             }

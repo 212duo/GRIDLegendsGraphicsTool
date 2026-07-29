@@ -95,6 +95,61 @@ class EditorSessionStateTest {
     }
 
     @Test
+    fun resultCallbackReadsPendingFromRootStoreBeforeUiSnapshotRefresh() {
+        val source = EditorSource.LiveConfig(
+            accessMode = AccessMode.ROOT,
+            configPath = "/game/preferences",
+            configContent = null
+        )
+        val initialRoute = EditorRouteState.open(source)
+        var publishedRoute = initialRoute
+        val store = EditorSessionStore(initialRoute) { publishedRoute = it }
+        val staleUiSession = publishedRoute.session
+        val pendingBytes = byteArrayOf(7, 8, 9)
+        val pendingSnapshot = mapOf("quality" to "ultra")
+
+        store.updateSession(source.sessionKey()) { current ->
+            current.beginExport(pendingBytes, pendingSnapshot)
+        }
+        val callbackSession = store.currentSession(source.sessionKey())
+
+        assertNull(staleUiSession.pendingExportBytes)
+        assertArrayEquals(pendingBytes, callbackSession?.pendingExportBytes)
+        assertEquals(pendingSnapshot, callbackSession?.pendingExportSnapshot)
+        assertArrayEquals(pendingBytes, publishedRoute.session.pendingExportBytes)
+
+        val completedSession = store.updateSession(source.sessionKey()) { current ->
+            current.completeExport()
+        }
+
+        assertNull(completedSession?.pendingExportBytes)
+        assertEquals(pendingSnapshot, completedSession?.lastExportedSnapshot)
+    }
+
+    @Test
+    fun rootStoreRejectsUpdateAfterSourceSwitch() {
+        val firstSource = EditorSource.LiveConfig(
+            accessMode = AccessMode.ROOT,
+            configPath = "/first/preferences",
+            configContent = null
+        )
+        val secondSource = EditorSource.LiveConfig(
+            accessMode = AccessMode.SHIZUKU,
+            configPath = "/second/preferences",
+            configContent = null
+        )
+        val store = EditorSessionStore(EditorRouteState.open(firstSource))
+        store.open(secondSource)
+
+        val rejected = store.updateSession(firstSource.sessionKey()) { current ->
+            current.beginExport(byteArrayOf(1), mapOf("quality" to "ultra"))
+        }
+
+        assertNull(rejected)
+        assertNull(store.currentSession(secondSource.sessionKey())?.pendingExportBytes)
+    }
+
+    @Test
     fun successfulExportClearsPendingAndRecordsSnapshot() {
         val exportSnapshot = mapOf("shadow_quality" to "high")
         val completed = EditorSessionState(sourceKey = "live:/settings.xml")
