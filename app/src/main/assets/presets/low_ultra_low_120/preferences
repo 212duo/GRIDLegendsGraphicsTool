@@ -1,0 +1,482 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<registry>
+    <key name="HKEY_CLASSES_ROOT">
+    </key>
+    <key name="HKEY_CURRENT_CONFIG">
+    </key>
+    <key name="HKEY_CURRENT_USER">
+        <key name="AutoValueRemap">
+            <key name="GPURemap">
+                <key name="keys">
+                    <value name="Software\IndirectX\Direct3D\Config" type="integer">1</value>
+                </key>
+                <key name="values">
+                    <value name="Software\Feral Interactive\GRIDLegends\Setup\FullScreen" type="integer">1</value>
+                    <value name="Software\Feral Interactive\GRIDLegends\Setup\ScreenH" type="integer">1</value>
+                    <value name="Software\Feral Interactive\GRIDLegends\Setup\ScreenW" type="integer">1</value>
+                </key>
+            </key>
+        </key>
+        <key name="Software">
+            <key name="CloudDrive">
+                <key name="Config">
+                    <value name="CloudSyncVersion" type="binary">000000000000f03f</value>
+                    <value name="CloudUseCellularAlert" type="integer">1</value>
+                    <value name="CloudUseDisabledAlert" type="integer">0</value>
+                    <value name="CloudUseOfflineMode" type="integer">1</value>
+                </key>
+            </key>
+            <key name="Feral Interactive">
+                <key name="GRIDLegends">
+                    <key name="BenchmarkSetup">
+                        <value name="CarCode" type="string">155</value>
+                        <value name="Enable" type="integer">0</value>
+                        <value name="GridOrder" type="integer">9</value>
+                        <value name="Location" type="string">san_francisco</value>
+                        <value name="NumDrivers" type="integer">2</value>
+                        <value name="NumLaps" type="integer">1</value>
+                        <value name="Track" type="string">san_francisco_route_0</value>
+                        <value name="Weather" type="string">day</value>
+                    </key>
+                    <key name="GraphicsSettings">
+                        <value name="AmbientOcclusion" type="integer">1</value>
+                        <value name="AmbientOcclusion_maximum" type="integer">-1</value>
+                        <value name="AntiAliasing" type="integer">2</value>
+                        <value name="AntiAliasing_maximum" type="integer">-1</value>
+                        <value name="Crowds" type="integer">0</value>
+                        <value name="Crowds_maximum" type="integer">-1</value>
+                        <value name="DevicePreset" type="integer">0</value>
+                        <value name="DisplayMode" type="integer">1</value>
+                        <value name="DynamicResolution" type="integer">0</value>
+                        <value name="DynamicResolution_maximum" type="integer">-1</value>
+                        <value name="FireworksAndConfetti" type="integer">1</value>
+                        <value name="FramerateLimit" type="integer">120</value>
+                        <value name="GroundCover" type="integer">0</value>
+                        <value name="GroundCover_maximum" type="integer">-1</value>
+                        <value name="HDR" type="integer">0</value>
+                        <value name="LightingQuality" type="integer">1</value>
+                        <value name="LightingQuality_maximum" type="integer">-1</value>
+                        <value name="LODQuality" type="integer">1</value>
+                        <value name="LODQuality_maximum" type="integer">-1</value>
+                        <value name="MetalFX" type="integer">0</value>
+                        <value name="MetalFX_maximum" type="integer">-1</value>
+                        <value name="Mirrors" type="integer">3</value>
+                        <value name="Mirrors_maximum" type="integer">-1</value>
+                        <value name="MotionBlur" type="integer">1</value>
+                        <value name="OptimisationPreset" type="integer">0</value>
+                        <value name="Particles" type="integer">3</value>
+                        <value name="Particles_maximum" type="integer">-1</value>
+                        <value name="PostProcess" type="integer">0</value>
+                        <value name="PostProcess_maximum" type="integer">-1</value>
+                        <value name="PresetOverride" type="integer">0</value>
+                        <value name="ReduceVisibleRain" type="integer">0</value>
+                        <value name="ScreenSpaceReflections" type="integer">1</value>
+                        <value name="ScreenSpaceReflections_maximum" type="integer">-1</value>
+                        <value name="Shadows" type="integer">1</value>
+                        <value name="Shadows_maximum" type="integer">-1</value>
+                        <value name="Skidmarks" type="integer">2</value>
+                        <value name="Skidmarks_maximum" type="integer">-1</value>
+                        <value name="SmokeShadows" type="integer">1</value>
+                        <value name="SmokeShadows_maximum" type="integer">-1</value>
+                        <value name="SupportsPerformanceMode" type="integer">1</value>
+                        <value name="TextureQuality" type="integer">3</value>
+                        <value name="TextureQuality_maximum" type="integer">-3</value>
+                        <value name="VehicleReflections" type="integer">1</value>
+                        <value name="VehicleReflections_maximum" type="integer">-1</value>
+                        <value name="VerticalSync" type="integer">0</value>
+                        <value name="VolumetricLights" type="integer">1</value>
+                        <value name="VolumetricLights_maximum" type="integer">-1</value>
+                        <value name="WeatherEffects" type="integer">3</value>
+                        <value name="WeatherEffects_maximum" type="integer">-1</value>
+                        <key name="BatterySaver">
+                            <value name="AmbientOcclusion" type="string">3, 0, 0</value>
+                            <value name="AntiAliasing" type="string">2, 0, 0</value>
+                            <value name="Crowds" type="string">1, 0, 0</value>
+                            <value name="CubeMapUpdateMode" type="string">None, None, None</value>
+                            <value name="CubeMapUpdateModeInterior" type="string">None, None, None</value>
+                            <value name="DynamicResolution" type="string">3, 0, 0</value>
+                            <value name="FramerateLimit" type="integer">30</value>
+                            <value name="FrameSizeMaximumPercentage" type="integer">100</value>
+                            <value name="FrameSizeMinimumPercentage" type="integer">50</value>
+                            <value name="GroundCover" type="string">2, 0, 0</value>
+                            <value name="LightingQuality" type="string">2, 0, 0</value>
+                            <value name="LODQuality" type="string">2, 0, 0</value>
+                            <value name="MetalFX" type="string">0, 0, 0</value>
+                            <value name="Mirrors" type="string">0, 0, 0</value>
+                            <value name="OptimisationResolutionMultiplier" type="integer">100</value>
+                            <value name="Particles" type="string">0, 0, 0</value>
+                            <value name="PostProcess" type="string">3, 0, 0</value>
+                            <value name="ScreenSpaceReflections" type="string">3, 0, 0</value>
+                            <value name="Shadows" type="string">3, 0, 0</value>
+                            <value name="Skidmarks" type="string">1, 0, 0</value>
+                            <value name="SmokeShadows" type="string">1, 0, 0</value>
+                            <value name="TextureQuality" type="string">1, 0, 0</value>
+                            <value name="VehicleReflections" type="string">3, 0, 0</value>
+                            <value name="VolumetricLights" type="string">2, 0, 0</value>
+                            <value name="WeatherEffects" type="string">1, 0, 0</value>
+                        </key>
+                        <key name="Graphics">
+                            <value name="AmbientOcclusion" type="string">1, 0, 0</value>
+                            <value name="AntiAliasing" type="string">2, 0, 0</value>
+                            <value name="Crowds" type="string">0, 0, 0</value>
+                            <value name="CubeMapUpdateMode" type="string">None, None, None</value>
+                            <value name="CubeMapUpdateModeInterior" type="string">None, None, None</value>
+                            <value name="DynamicResolution" type="string">0, 0, 0</value>
+                            <value name="FramerateLimit" type="integer">120</value>
+                            <value name="FrameSizeMaximumPercentage" type="integer">50</value>
+                            <value name="FrameSizeMinimumPercentage" type="integer">30</value>
+                            <value name="GroundCover" type="string">1, 0, 0</value>
+                            <value name="LightingQuality" type="string">1, 0, 0</value>
+                            <value name="LODQuality" type="string">1, 0, 0</value>
+                            <value name="MetalFX" type="string">0, 0, 0</value>
+                            <value name="Mirrors" type="string">0, 0, 0</value>
+                            <value name="OptimisationResolutionMultiplier" type="integer">50</value>
+                            <value name="Particles" type="string">0, 0, 0</value>
+                            <value name="PostProcess" type="string">1, 0, 0</value>
+                            <value name="ScreenSpaceReflections" type="string">1, 0, 0</value>
+                            <value name="Shadows" type="string">0, 0, 0</value>
+                            <value name="Skidmarks" type="string">1, 0, 0</value>
+                            <value name="SmokeShadows" type="string">1, 0, 0</value>
+                            <value name="TextureQuality" type="string">1, 0, 0</value>
+                            <value name="VehicleReflections" type="string">1, 0, 0</value>
+                            <value name="VolumetricLights" type="string">1, 0, 0</value>
+                            <value name="WeatherEffects" type="string">1, 0, 0</value>
+                        </key>
+                        <key name="Performance">
+                            <value name="AmbientOcclusion" type="string">3, 0, 0</value>
+                            <value name="AntiAliasing" type="string">3, 0, 0</value>
+                            <value name="Crowds" type="string">1, 0, 0</value>
+                            <value name="CubeMapUpdateMode" type="string">oddsThenEvens, None, None</value>
+                            <value name="CubeMapUpdateModeInterior" type="string">None, None, None</value>
+                            <value name="DynamicResolution" type="string">3, 0, 0</value>
+                            <value name="FramerateLimit" type="integer">120</value>
+                            <value name="FrameSizeMaximumPercentage" type="integer">80</value>
+                            <value name="FrameSizeMinimumPercentage" type="integer">50</value>
+                            <value name="GroundCover" type="string">3, 0, 0</value>
+                            <value name="LightingQuality" type="string">2, 0, 0</value>
+                            <value name="LODQuality" type="string">2, 0, 0</value>
+                            <value name="MetalFX" type="string">0, 0, 0</value>
+                            <value name="Mirrors" type="string">3, 0, 0</value>
+                            <value name="OptimisationResolutionMultiplier" type="integer">100</value>
+                            <value name="Particles" type="string">3, 0, 0</value>
+                            <value name="PostProcess" type="string">3, 0, 0</value>
+                            <value name="ScreenSpaceReflections" type="string">3, 0, 0</value>
+                            <value name="Shadows" type="string">1, 0, 0</value>
+                            <value name="Skidmarks" type="string">2, 0, 0</value>
+                            <value name="SmokeShadows" type="string">1, 0, 0</value>
+                            <value name="TextureQuality" type="string">3, 0, 0</value>
+                            <value name="VehicleReflections" type="string">3, 0, 0</value>
+                            <value name="VolumetricLights" type="string">2, 0, 0</value>
+                            <value name="WeatherEffects" type="string">3, 0, 0</value>
+                        </key>
+                    </key>
+                    <key name="Setup">
+                        <value name="AddSteamCloudAlias" type="integer">1</value>
+                        <value name="AllowAutorotate" type="integer">1</value>
+                        <value name="AllowPausing" type="integer">1</value>
+                        <value name="AllowPushNotifications" type="integer">1</value>
+                        <value name="AllowsBlockedDevices" type="integer">1</value>
+                        <value name="AllowSendCrashReports" type="integer">1</value>
+                        <value name="AllowSendUsageData" type="integer">1</value>
+                        <value name="AntialiasingAlgorithm" type="integer">1</value>
+                        <value name="AsyncCompute" type="integer">1</value>
+                        <value name="AudioSamplesPerFrame" type="integer">0</value>
+                        <value name="AugmentBarrierScopes" type="integer">1</value>
+                        <value name="BatchProcessCrowdAnimationJobs" type="integer">1</value>
+                        <value name="BloomScale" type="integer">100</value>
+                        <value name="BufferedPacketData" type="binary">4a4ab093cc62dfd42fff8981593fe3f86582d656e451e5f3752f94d2e2d16b8e506b3d3bc6a4e64d625e9563dbe0504153ce66afcf03cf695f8aed70651a026be00b9c581d2e6067c6f6b67f7cde8618f2836a21f57b67121ebda02703f6590f5454ac1c65814e019b5bf5a9dee95e3582dfbf407d8f0637a9e3886a243031235f8aed70651a026ba9e3886a24303123506b3d3bc6a4e64d9b5bf5a9dee95e3553ce66afcf03cf69e00b9c581d2e60676582d656e451e5f3c6f6b67f7cde8618752f94d2e2d16b8e4a4ab093cc62dfd41ebda02703f6590f2fff8981593fe3f882dfbf407d8f0637625e9563dbe05041f2836a21f57b67125454ac1c65814e01</value>
+                        <value name="CalicoRefreshKeychain" type="integer">1</value>
+                        <value name="CardRenderer" type="string">Mali-G925-Immortalis MC12 3712MB</value>
+                        <value name="CareerCategoriesCompleted" type="integer">0</value>
+                        <value name="CareerTiersUnlocked" type="integer">0</value>
+                        <value name="ChaseCameraDynamicOffsetScale" type="binary">000000000000e03f</value>
+                        <value name="ChaseCameraOffsetHorizontal" type="binary">1f85eb51b81ed5bf</value>
+                        <value name="ChaseCameraOffsetVertical" type="binary">52b81e85eb51d03f</value>
+                        <value name="ClearBeforeLiveryGeneration" type="integer">0</value>
+                        <value name="ConstrainLiveWindowResize" type="integer">1</value>
+                        <value name="DecoupleGlobalDifficultySettings" type="integer">1</value>
+                        <value name="DevicePreset" type="integer">0</value>
+                        <value name="DisableDOF" type="integer">1</value>
+                        <value name="DisabledParticlesOptimisations" type="integer">1</value>
+                        <value name="DisableMomentumScrolling" type="integer">1</value>
+                        <value name="DisableOSShortcuts" type="integer">1</value>
+                        <value name="DisablePhotoAutofocus" type="integer">1</value>
+                        <value name="DisableUIBlur" type="integer">1</value>
+                        <value name="DisplayControlsPrompt" type="integer">1</value>
+                        <value name="DoneMinOS" type="integer">0</value>
+                        <value name="DonePromotional" type="integer">0</value>
+                        <value name="DoneUnsupported" type="integer">0</value>
+                        <value name="EarlyDeferredDetailClear" type="integer">1</value>
+                        <value name="EarlyEnvShadowMirrorsPasses" type="integer">1</value>
+                        <value name="EnableEdgeBlurOnQuarterRes" type="integer">1</value>
+                        <value name="EnableSSR" type="integer">0</value>
+                        <value name="EnableVolumetrics" type="integer">1</value>
+                        <value name="EscBackButton" type="integer">0</value>
+                        <value name="ExecuteAllScenesTogether" type="integer">0</value>
+                        <value name="ExportLiveryGenerationResults" type="integer">0</value>
+                        <value name="FemsSimMaxUpdatesPerFrame" type="integer">1</value>
+                        <value name="FemsSimSubSteps" type="integer">5</value>
+                        <value name="FemsSimTimeStepNthOfASecond" type="integer">30</value>
+                        <value name="FeralAnalyticsInstallID" type="string">oL1QKFSQpy6VvzE1pgYz0rHD</value>
+                        <value name="FeralMeshLODOverridesFileName" type="string">meshLOD_overrides.json</value>
+                        <value name="FeralTrackOverridesFileName" type="string">track_overrides.json</value>
+                        <value name="FeralVehicleOverridesFileName" type="string">vehicle_overrides.json</value>
+                        <value name="FixedScreenHeight" type="integer">500</value>
+                        <value name="ForceBlurPassBeforeAllUI" type="integer">0</value>
+                        <value name="ForceCrowdFrameSkip" type="integer">1</value>
+                        <value name="ForceDisableDetachedForM1" type="integer">1</value>
+                        <value name="ForceDisableDetachedOnVRR" type="integer">1</value>
+                        <value name="ForceDisableWatchdog" type="integer">1</value>
+                        <value name="ForceEnableVolumetricsOnDriftMode" type="integer">1</value>
+                        <value name="ForceGridOnlySponsors" type="integer">0</value>
+                        <value name="ForceLastDialogBlurPass" type="integer">1</value>
+                        <value name="ForcePixelShadowMask" type="integer">1</value>
+                        <value name="ForceSingleDownSampleForUIBlurPass" type="integer">1</value>
+                        <value name="ForceSingleUIBlurPass" type="integer">1</value>
+                        <value name="FrameSizeIncrementPercentage" type="integer">5</value>
+                        <value name="FullScreen" type="integer">1</value>
+                        <value name="GameInstallVersion" type="integer">16843520</value>
+                        <value name="GameInstallVersionString" type="string">GRID™ Legends v1.1.3</value>
+                        <value name="GameInstallVersionWithStages" type="integer">18120704</value>
+                        <value name="GameOptionsDialogShouldShow" type="integer">0</value>
+                        <value name="GameOptionsDialogShown" type="integer">1</value>
+                        <value name="GameVersionNew" type="integer">16843776</value>
+                        <value name="GameVersionString" type="string">GRID™ Legends v1.1.4</value>
+                        <value name="GroupSkyShadowmapPasses" type="integer">1</value>
+                        <value name="HapticControllerFallbackToDevice" type="integer">1</value>
+                        <value name="HasSimilarHardwareToSupportedDevice" type="integer">1</value>
+                        <value name="IdealDisplayListSize" type="integer">-1</value>
+                        <value name="ImproveLowFPSCubemapUpdates" type="integer">1</value>
+                        <value name="IncreasedFlashbackAmount" type="integer">5</value>
+                        <value name="IsFixedAAAlgorithm" type="integer">1</value>
+                        <value name="IsLanguageAutoDetectSelected" type="integer">0</value>
+                        <value name="JobSystemWorkerThreadCount" type="integer">-3</value>
+                        <value name="LaunchSendUsageDataAnalyticsSent" type="integer">1</value>
+                        <value name="LimitSpawnParticlesToUsedEmitters" type="integer">1</value>
+                        <value name="LimitTextureCommandsIfRaceStarted" type="integer">1</value>
+                        <value name="LiveWindowResizePercentage" type="integer">25</value>
+                        <value name="LiveWindowResizeThreshold" type="integer">3</value>
+                        <value name="LoadStoreOptimisationsEnabled" type="integer">1</value>
+                        <value name="MaxMotionBlurVelocityScale" type="integer">4</value>
+                        <value name="MaxParticleEmittersOverride" type="integer">4096</value>
+                        <value name="MemoryAliasedRTScaling" type="integer">1</value>
+                        <value name="MergeDeferredDetailGroupAOSkyShadowMaskOpaquePasses" type="integer">0</value>
+                        <value name="MergeDeferredDetailGroupPasses" type="integer">1</value>
+                        <value name="MergeEarlyScenePasses" type="integer">0</value>
+                        <value name="MergeLensFlaresPasses" type="integer">0</value>
+                        <value name="MergeMainSceneGroupPasses" type="integer">1</value>
+                        <value name="MergeMainSceneTransparentGroupPasses" type="integer">1</value>
+                        <value name="MergeTAAWithRainfallPasses" type="integer">1</value>
+                        <value name="MergeUpscaleUIPasses" type="integer">1</value>
+                        <value name="MergeVelocityCalcWithTAAPass" type="integer">1</value>
+                        <value name="MergeVelocityDepthPrepasses" type="integer">1</value>
+                        <value name="MinWindowedHeight" type="integer">300</value>
+                        <value name="MinWindowedWidth" type="integer">400</value>
+                        <value name="NormalFlashbackAmount" type="integer">3</value>
+                        <value name="OcclusionMinSize" type="integer">1</value>
+                        <value name="OptimiseCrowdAnimationCalculations" type="integer">0</value>
+                        <value name="OptimiseMainMenuEnvMaps" type="integer">0</value>
+                        <value name="OptimiseParticleRendering" type="integer">1</value>
+                        <value name="OptimisePauseMenu" type="integer">1</value>
+                        <value name="OptimisePhotoMode" type="integer">1</value>
+                        <value name="OptimisePostRaceScreen" type="integer">1</value>
+                        <value name="PauseMoviesOnPause" type="integer">1</value>
+                        <value name="PauseOnSuspend" type="integer">1</value>
+                        <value name="PauseSoundOnPause" type="integer">1</value>
+                        <value name="PauseTimersOnPause" type="integer">1</value>
+                        <value name="PersistentCmdLists" type="integer">0</value>
+                        <value name="PhotoModeGestureStrengthOneFinger" type="binary">000000000000d03f</value>
+                        <value name="PresentAsyncToUpdateQueue" type="integer">1</value>
+                        <value name="RaisedPriorityShadersBlock" type="integer">0</value>
+                        <value name="ReducedFlashbackAmount" type="integer">1</value>
+                        <value name="RemoveUnrequiredUAVFlags" type="integer">1</value>
+                        <value name="RemoveUnusedIntelHemiSSAOTarget" type="integer">0</value>
+                        <value name="RenderPassSplitVertexCount" type="integer">-1</value>
+                        <value name="RenderUnderCornerNotch" type="integer">1</value>
+                        <value name="RenderUnderNotch" type="integer">1</value>
+                        <value name="RenderVariationBloom" type="integer">1</value>
+                        <value name="RenderVariationGodRays" type="integer">1</value>
+                        <value name="RenderVariationLensDust" type="integer">1</value>
+                        <value name="RenderVariationMotionBlur" type="integer">1</value>
+                        <value name="RenderVariationSSR" type="integer">1</value>
+                        <value name="RenderVariationToneMap" type="integer">1</value>
+                        <value name="RenderVariationVolumetrics" type="integer">1</value>
+                        <value name="RerouteAndroidBenchmarkResults" type="integer">1</value>
+                        <value name="ReviewEventCounter" type="integer">6</value>
+                        <value name="ReviewEventThreshold" type="integer">40</value>
+                        <value name="ScreenDensityMax" type="integer">526</value>
+                        <value name="ScreenH" type="integer">1080</value>
+                        <value name="ScreenW" type="integer">2400</value>
+                        <value name="SeenSpecificationAlertUUIDAudioSamplesPerFrameOverride_1_1_4RC7" type="integer">1</value>
+                        <value name="SeenSpecificationAlertUUIDHDtextureSupport_1_1_2b1" type="integer">1</value>
+                        <value name="SeenSpecificationAlertUUIDMediumHardwareSpec_1_1_2b11" type="integer">1</value>
+                        <value name="SeenSpecificationAlertUUIDUltraHardwareSpec_1_1_2b11" type="integer">1</value>
+                        <value name="SeenSpecificationAlertUUIDUnblockedDevice" type="integer">1</value>
+                        <value name="SeenSpecificationAlertUUIDUnknownHardware" type="integer">1</value>
+                        <value name="SeenSpecificationAlertUUIDUnknownIneligibleHardware" type="integer">1</value>
+                        <value name="SeenSpecificationAlertUUIDUntestedCapableHardware" type="integer">1</value>
+                        <value name="ShouldLoadDefaultPreset" type="integer">0</value>
+                        <value name="SkipBackbufferClear" type="integer">0</value>
+                        <value name="SkipComputeSSAOSurfaceClear" type="integer">1</value>
+                        <value name="SkipDepthPrepass" type="integer">1</value>
+                        <value name="SkipHemiSSAODepthDownscaling" type="integer">1</value>
+                        <value name="SkipNegYEnvironmentMap" type="integer">1</value>
+                        <value name="SpecificationFirstLaunchCheck" type="integer">1</value>
+                        <value name="SpecificationLastUpdateCheckTime" type="binary">62570f6900000000</value>
+                        <value name="SpecificationUpdateURL" type="string">https://u1.feralinteractive.com/autoupdate/gridlegends/specifications_android_1_1_4.xml</value>
+                        <value name="SpotShadowAtlasHeight" type="integer">1024</value>
+                        <value name="SpotShadowAtlasWidth" type="integer">2048</value>
+                        <value name="TextureAddCommandsTimeout" type="integer">1</value>
+                        <value name="TightenHZBCulling" type="integer">0</value>
+                        <value name="TouchSliderGranularity" type="integer">2</value>
+                        <value name="TouchSliderMaxOptions" type="integer">101</value>
+                        <value name="UpdateServerDomain" type="string">u1.feralinteractive.com</value>
+                        <value name="UpdateServerPath" type="string">/autoupdate/</value>
+                        <value name="UpdateServerProtocol" type="string">https://</value>
+                        <value name="UpscalerMultiplier" type="integer">100</value>
+                        <value name="UseDriveSaveSync" type="integer">0</value>
+                        <value name="UseFeralTAA" type="integer">0</value>
+                        <value name="UseFeralUpscaler" type="integer">0</value>
+                        <value name="UseGoogleSignIn" type="integer">1</value>
+                        <value name="UseOfflineEvents" type="integer">1</value>
+                        <key name="Memory">
+                            <value name="CharacterSmallHeapSizeMB" type="integer">2</value>
+                            <value name="CrowdSmallHeapSizeKB" type="integer">64</value>
+                            <value name="DestroyOnEviction" type="integer">1</value>
+                            <value name="EnvironmentSmallHeapSizeMB" type="integer">8</value>
+                            <value name="HalfPrecisionShadowMaps" type="integer">1</value>
+                            <value name="MaxNumProjectedTextures" type="integer">8</value>
+                            <value name="PlacedResUploadHeapSizeMB" type="integer">28</value>
+                            <value name="ProjectedTexturesSize" type="integer">256</value>
+                            <value name="RegularUploadHeapSizeMB" type="integer">16</value>
+                            <value name="ResidencyAllocBufferSizeMB" type="integer">10</value>
+                            <value name="SmallRainOcclusionTexture" type="integer">1</value>
+                            <value name="TrackedPageableSetReserveSizeB" type="integer">1000</value>
+                            <value name="TrackSmallHeapSizeMB" type="integer">40</value>
+                            <value name="UISmallHeapSizeMB" type="integer">12</value>
+                            <value name="UseDoubleBuffering" type="integer">1</value>
+                            <value name="UseSmallTextureStreamingBuffers" type="integer">1</value>
+                            <value name="VehicleSmallHeapSizeMB" type="integer">12</value>
+                            <value name="VFXSmallHeapSizeKB" type="integer">600</value>
+                            <key name="PSOWhiteList">
+                                <value name="Enabled" type="integer">1</value>
+                                <value name="RecordingAll" type="integer">1</value>
+                            </key>
+                        </key>
+                        <key name="SpecificationAlerts">
+                            <value name="DefaultHardwareSpecificationsClass_1_1_2b15" type="integer">1</value>
+                        </key>
+                        <key name="TAA">
+                            <value name="Technique" type="integer">0</value>
+                        </key>
+                        <key name="TexturePacks">
+                            <value name="AllowHD" type="integer">1</value>
+                            <value name="UseHD" type="integer">1</value>
+                        </key>
+                        <key name="Upscaler">
+                            <value name="CASUsePixelShader" type="integer">1</value>
+                            <value name="SharpenAmount" type="binary">0000000000000000</value>
+                            <value name="Technique" type="integer">0</value>
+                        </key>
+                    </key>
+                </key>
+            </key>
+            <key name="IndirectX">
+                <key name="Direct3D">
+                    <key name="Config">
+                        <value name="EnableFramerateManager" type="integer">1</value>
+                        <value name="FeralGUIWatermarkText" type="string"></value>
+                        <value name="MetalAllowHalfFloats" type="integer">1</value>
+                        <value name="MinPipelineCreateTimeToWarm" type="integer">0</value>
+                        <value name="ShowFeralGUIWatermark" type="integer">0</value>
+                        <value name="VulkanEnableSubmitBatching" type="integer">1</value>
+                        <value name="VulkanUseSeparateSubmitThread" type="integer">1</value>
+                    </key>
+                </key>
+                <key name="DirectInput">
+                    <key name="Config">
+                        <value name="DisableDirectInputGamepads" type="integer">1</value>
+                        <value name="UseInputLibraryFromPlist" type="integer">1</value>
+                    </key>
+                </key>
+            </key>
+            <key name="MacDoze">
+                <key name="Config">
+                    <value name="BinkWebmUseLibvpx" type="integer">1</value>
+                    <value name="ClearSavesEnabled" type="integer">0</value>
+                    <value name="DisableClearSaveDataAlert" type="integer">0</value>
+                </key>
+            </key>
+            <key name="SystemMonitor">
+                <key name="Config">
+                    <value name="AppVersion" type="integer">16843776</value>
+                    <value name="Backgrounded" type="integer">1</value>
+                    <value name="OSVersion" type="string">15.0</value>
+                    <value name="QuitIntentional" type="integer">0</value>
+                </key>
+            </key>
+        </key>
+    </key>
+    <key name="HKEY_LOCAL_MACHINE">
+        <key name="Hardware">
+            <key name="Description">
+                <key name="System">
+                    <key name="CentralProcessor">
+                        <key name="0">
+                            <value name="Identifier" type="string"></value>
+                            <value name="ProcessorNameString" type="string"></value>
+                            <value name="VendorIdentifier" type="string">Arm Limited</value>
+                            <value name="~MHz" type="integer">2400</value>
+                        </key>
+                        <key name="1">
+                            <value name="Identifier" type="string"></value>
+                            <value name="ProcessorNameString" type="string"></value>
+                            <value name="VendorIdentifier" type="string">Arm Limited</value>
+                            <value name="~MHz" type="integer">2400</value>
+                        </key>
+                        <key name="2">
+                            <value name="Identifier" type="string"></value>
+                            <value name="ProcessorNameString" type="string"></value>
+                            <value name="VendorIdentifier" type="string">Arm Limited</value>
+                            <value name="~MHz" type="integer">2400</value>
+                        </key>
+                        <key name="3">
+                            <value name="Identifier" type="string"></value>
+                            <value name="ProcessorNameString" type="string"></value>
+                            <value name="VendorIdentifier" type="string">Arm Limited</value>
+                            <value name="~MHz" type="integer">2400</value>
+                        </key>
+                        <key name="4">
+                            <value name="Identifier" type="string"></value>
+                            <value name="ProcessorNameString" type="string"></value>
+                            <value name="VendorIdentifier" type="string">Arm Limited</value>
+                            <value name="~MHz" type="integer">2400</value>
+                        </key>
+                        <key name="5">
+                            <value name="Identifier" type="string"></value>
+                            <value name="ProcessorNameString" type="string"></value>
+                            <value name="VendorIdentifier" type="string">Arm Limited</value>
+                            <value name="~MHz" type="integer">2400</value>
+                        </key>
+                        <key name="6">
+                            <value name="Identifier" type="string"></value>
+                            <value name="ProcessorNameString" type="string"></value>
+                            <value name="VendorIdentifier" type="string">Arm Limited</value>
+                            <value name="~MHz" type="integer">2400</value>
+                        </key>
+                        <key name="7">
+                            <value name="Identifier" type="string"></value>
+                            <value name="ProcessorNameString" type="string"></value>
+                            <value name="VendorIdentifier" type="string">Arm Limited</value>
+                            <value name="~MHz" type="integer">2400</value>
+                        </key>
+                    </key>
+                </key>
+            </key>
+        </key>
+        <key name="Software">
+        </key>
+    </key>
+    <key name="HKEY_USERS">
+    </key>
+</registry>
