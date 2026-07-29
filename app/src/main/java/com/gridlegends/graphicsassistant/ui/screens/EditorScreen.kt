@@ -45,6 +45,8 @@ import com.gridlegends.graphicsassistant.ui.theme.*
 fun EditorScreen(
     context: Activity,
     source: EditorSource,
+    session: EditorSessionState,
+    onSessionChange: (EditorSessionState) -> Unit,
     onBack: () -> Unit,
     onAbout: () -> Unit
 ) {
@@ -56,10 +58,7 @@ fun EditorScreen(
     val rootOp = remember { RootFileOperator(rootManager) }
     val safOp = remember { FileOperator(context, safManager) }
 
-    val sourceKey = source.stableKey()
-    var session by rememberSaveable(sourceKey) {
-        mutableStateOf(EditorSessionState(sourceKey = sourceKey))
-    }
+    val sourceKey = source.sessionKey()
     var isSaving by remember { mutableStateOf(false) }
     val bundledPreset = (source as? EditorSource.BundledPreset)?.preset
     var showDiscardDialog by rememberSaveable { mutableStateOf(false) }
@@ -74,12 +73,12 @@ fun EditorScreen(
         contract = ActivityResultContracts.CreateDocument("application/octet-stream")
     ) { uri ->
         if (uri == null) {
-            session = session.cancelExport()
+            onSessionChange(session.cancelExport())
         } else {
             val bytes = session.pendingExportBytes
             val snapshot = session.pendingExportSnapshot
             if (bytes == null || snapshot == null) {
-                session = session.cancelExport()
+                onSessionChange(session.cancelExport())
                 Toast.makeText(context, "导出状态已丢失，请重新导出", Toast.LENGTH_LONG).show()
             } else {
                 try {
@@ -87,10 +86,10 @@ fun EditorScreen(
                         output.write(bytes)
                         output.flush()
                     } ?: error("无法打开目标文件")
-                    session = session.completeExport()
+                    onSessionChange(session.completeExport())
                     showInstallDialog = true
                 } catch (e: Exception) {
-                    session = session.cancelExport()
+                    onSessionChange(session.cancelExport())
                     Toast.makeText(context, "导出失败：${e.message}", Toast.LENGTH_LONG).show()
                 }
             }
@@ -121,18 +120,18 @@ fun EditorScreen(
                 } ?: error("未找到配置文件")
             }
             val parsedValues = ConfigParser.toParamValues(rawValues).associateBy { it.key }
-            session = EditorSessionState(
+            onSessionChange(EditorSessionState(
                 sourceKey = sourceKey,
                 rawConfigValues = rawValues,
                 paramValues = parsedValues,
                 isInitialized = true,
                 lastExportedSnapshot = parsedValues.mapValues { it.value.value }
-            )
+            ))
             Log.d("GLGraphics", "EditorScreen: 解析到 ${parsedValues.size} 个画质参数")
         } catch (e: Exception) {
-            session = session.copyForEditor(
+            onSessionChange(session.copyForEditor(
                 loadError = "读取配置失败：${e.message}"
-            )
+            ))
             Log.e("GLGraphics", "EditorScreen: 读取异常", e)
         }
     }
@@ -160,7 +159,7 @@ fun EditorScreen(
                 isModified = value != originalValue
             )
         }
-        session = session.copyForEditor(paramValues = next)
+        onSessionChange(session.copyForEditor(paramValues = next))
     }
 
     fun saveLiveConfig(liveSource: EditorSource.LiveConfig) {
@@ -176,11 +175,11 @@ fun EditorScreen(
                 AccessMode.SAF -> safOp.writeConfig(paramValues)
             }
             if (success) {
-                session = session.copyForEditor(
+                onSessionChange(session.copyForEditor(
                     paramValues = paramValues.mapValues { (_, value) ->
                         value.copy(originalValue = value.value, isModified = false)
                     }
-                )
+                ))
                 Toast.makeText(
                     context,
                     "保存成功！请重启游戏使设置生效",
@@ -202,7 +201,7 @@ fun EditorScreen(
                 isSaving = true
                 ConfigExporter.build(source.preset, paramValues).fold(
                     onSuccess = { bytes ->
-                        session = session.beginExport(bytes, currentSnapshot)
+                        onSessionChange(session.beginExport(bytes, currentSnapshot))
                         exportLauncher.launch("preferences")
                     },
                     onFailure = { error ->
@@ -248,11 +247,11 @@ fun EditorScreen(
                     // 恢复默认按钮
                     IconButton(
                         onClick = {
-                            session = session.copyForEditor(
+                            onSessionChange(session.copyForEditor(
                                 paramValues = paramValues.mapValues { (_, v) ->
                                     v.copy(value = v.originalValue, isModified = false)
                                 }
-                            )
+                            ))
                         }
                     ) {
                         Icon(
@@ -327,7 +326,7 @@ fun EditorScreen(
                                                     param = param,
                                                     paramValue = paramValue,
                                                     onValueChange = { newValue ->
-                                                        session = session.copyForEditor(
+                                                        onSessionChange(session.copyForEditor(
                                                             paramValues = paramValues.toMutableMap().apply {
                                                                 put(
                                                                     param.key,
@@ -337,7 +336,7 @@ fun EditorScreen(
                                                                     )
                                                                 )
                                                             }
-                                                            )
+                                                            ))
                                                     }
                                                 )
                                             }
@@ -455,11 +454,6 @@ fun EditorScreen(
             }
         )
     }
-}
-
-private fun EditorSource.stableKey(): String = when (this) {
-    is EditorSource.LiveConfig -> "live:$accessMode:${configPath.orEmpty()}"
-    is EditorSource.BundledPreset -> "preset:${preset.metadata.id}"
 }
 
 private fun EditorSessionState.copyForEditor(

@@ -31,4 +31,48 @@ class SafeCommandLogTest {
         assertFalse(summary.contains(outputSentinel))
         assertFalse(summary.contains(errorSentinel))
     }
+
+    @Test
+    fun lookupSummaryDoesNotExposeCandidatePathOrCommandOutput() {
+        val sentinel = "lookup-secret-9d12f3c7"
+        val candidatePath = "/sdcard/Android/data/$sentinel/preferences"
+        val output = "$candidatePath\n<Settings>$sentinel</Settings>"
+
+        val summary = safeFileLookupSummary(
+            mode = "SHIZUKU",
+            operation = "recursive",
+            candidatePath = candidatePath,
+            output = output,
+            found = true,
+            exitCode = 0
+        )
+
+        assertEquals(
+            "SHIZUKU lookup operation=recursive candidateLength=${candidatePath.length} " +
+                "found=true outputLength=${output.length} exit=0",
+            summary
+        )
+        assertFalse(summary.contains(sentinel))
+        assertFalse(summary.contains(candidatePath))
+        assertFalse(summary.contains("<Settings>"))
+    }
+
+    @Test
+    fun pathResultSummaryDoesNotExposeReturnedPath() {
+        val sentinel = "returned-path-secret-a5c30d7b"
+        val path = "/sdcard/Android/data/$sentinel/preferences"
+
+        val summary = safePathResultSummary(
+            mode = "ROOT",
+            operation = "home-find",
+            path = path
+        )
+
+        assertEquals(
+            "ROOT pathResult operation=home-find found=true pathLength=${path.length}",
+            summary
+        )
+        assertFalse(summary.contains(sentinel))
+        assertFalse(summary.contains(path))
+    }
 }

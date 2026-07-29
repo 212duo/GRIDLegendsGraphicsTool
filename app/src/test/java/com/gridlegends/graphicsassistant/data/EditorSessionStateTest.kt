@@ -14,7 +14,7 @@ import java.io.ObjectOutputStream
 
 class EditorSessionStateTest {
     @Test
-    fun pendingExportAndBundledSourceSurviveJavaSerialization() {
+    fun rootOwnedEditorRouteSurvivesJavaSerialization() {
         val preset = LoadedPreset(
             metadata = PresetMetadata("balanced", "平衡", PresetGroup.MID, "适合大多数设备"),
             baseBytes = byteArrayOf(1, 2, 3),
@@ -31,16 +31,67 @@ class EditorSessionStateTest {
             lastExportedSnapshot = mapOf("quality" to "high")
         ).beginExport(byteArrayOf(9, 8, 7), mapOf("quality" to "ultra"))
 
-        val restored = javaSerializationRoundTrip(source to session)
-        val restoredSource = restored.first as EditorSource.BundledPreset
-        val restoredSession = restored.second
+        val restored = javaSerializationRoundTrip(
+            EditorRouteState.open(source).withSession(session)
+        )
+        val restoredSource = restored.source as EditorSource.BundledPreset
+        val restoredSession = restored.session
 
         assertEquals("balanced", restoredSource.preset.metadata.id)
         assertArrayEquals(byteArrayOf(1, 2, 3), restoredSource.preset.baseBytes)
-        assertEquals("ultra", restoredSession.paramValues.getValue("quality").value)
+        assertEquals("preset:balanced", restoredSession.sourceKey)
+        assertTrue(restoredSession.isInitialized)
+        assertEquals(mapOf("quality" to "high"), restoredSession.rawConfigValues)
+        val restoredParam = restoredSession.paramValues.getValue("quality")
+        assertEquals("ultra", restoredParam.value)
+        assertEquals("high", restoredParam.originalValue)
+        assertTrue(restoredParam.isModified)
         assertArrayEquals(byteArrayOf(9, 8, 7), restoredSession.pendingExportBytes)
         assertEquals(mapOf("quality" to "ultra"), restoredSession.pendingExportSnapshot)
         assertEquals(mapOf("quality" to "high"), restoredSession.lastExportedSnapshot)
+    }
+
+    @Test
+    fun openingDifferentSourceStartsFreshSession() {
+        val firstSource = EditorSource.LiveConfig(
+            accessMode = AccessMode.ROOT,
+            configPath = "/first/preferences",
+            configContent = null
+        )
+        val firstRoute = EditorRouteState.open(firstSource).withSession(
+            EditorSessionState(
+                sourceKey = firstSource.sessionKey(),
+                rawConfigValues = mapOf("quality" to "high"),
+                paramValues = mapOf("quality" to ParamValue("quality", "ultra", "high", true)),
+                isInitialized = true
+            ).beginExport(byteArrayOf(1), mapOf("quality" to "ultra"))
+        )
+        val secondSource = EditorSource.LiveConfig(
+            accessMode = AccessMode.SHIZUKU,
+            configPath = "/second/preferences",
+            configContent = null
+        )
+
+        val secondRoute = EditorRouteState.open(secondSource)
+
+        assertEquals("live:ROOT:/first/preferences", firstRoute.session.sourceKey)
+        assertEquals("live:SHIZUKU:/second/preferences", secondRoute.session.sourceKey)
+        assertTrue(secondRoute.session.rawConfigValues.isEmpty())
+        assertTrue(secondRoute.session.paramValues.isEmpty())
+        assertNull(secondRoute.session.pendingExportBytes)
+        assertFalse(secondRoute.session.isInitialized)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun routeRejectsSessionFromDifferentSource() {
+        val source = EditorSource.LiveConfig(
+            accessMode = AccessMode.ROOT,
+            configPath = "/first/preferences",
+            configContent = null
+        )
+        val route = EditorRouteState.open(source)
+
+        route.withSession(EditorSessionState(sourceKey = "preset:other"))
     }
 
     @Test
@@ -79,31 +130,34 @@ class EditorSessionStateTest {
 
     @Test
     fun logSummaryNeverContainsEmbeddedConfigBody() {
-        val secret = "do-not-log-4fb4d6ef"
-        val content = "<Settings><token>$secret</token></Settings>"
+        val contentSecret = "do-not-log-4fb4d6ef"
+        val pathSecret = "path-secret-81ad5c2e"
+        val path = "/sdcard/Android/data/$pathSecret/preferences"
+        val content = "<Settings><token>$contentSecret</token></Settings>"
         val source = EditorSource.LiveConfig(
             accessMode = AccessMode.SAF,
-            configPath = "/sdcard/Android/data/game/files/settings.xml",
+            configPath = path,
             configContent = content
         )
 
         val summary = source.logSummary()
 
         assertTrue(summary.contains("SAF"))
-        assertTrue(summary.contains("/sdcard/Android/data/game/files/settings.xml"))
+        assertTrue(summary.contains("pathLength=${path.length}"))
         assertTrue(summary.contains(content.length.toString()))
-        assertFalse(summary.contains(secret))
+        assertFalse(summary.contains(pathSecret))
+        assertFalse(summary.contains(contentSecret))
         assertFalse(summary.contains("<Settings>"))
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun javaSerializationRoundTrip(value: Pair<EditorSource, EditorSessionState>): Pair<EditorSource, EditorSessionState> {
+    private fun <T> javaSerializationRoundTrip(value: T): T {
         val bytes = ByteArrayOutputStream().use { output ->
             ObjectOutputStream(output).use { it.writeObject(value) }
             output.toByteArray()
         }
         return ObjectInputStream(ByteArrayInputStream(bytes)).use { input ->
-            input.readObject() as Pair<EditorSource, EditorSessionState>
+            input.readObject() as T
         }
     }
 }

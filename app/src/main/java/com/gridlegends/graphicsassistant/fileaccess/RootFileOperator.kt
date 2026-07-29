@@ -60,8 +60,9 @@ class RootFileOperator(
         for (name in CONFIG_FILE_NAMES) {
             val path = "$prefsDir/$name"
             val (out, code) = exec("[ -f \"$path\" ] && echo EXISTS")
-            log("检查 $path -> ${out.trim()} exit=$code")
-            if (out.trim() == "EXISTS") return path
+            val found = out.trim() == "EXISTS"
+            log(safeFileLookupSummary("ROOT", "direct", path, out, found, code))
+            if (found) return path
         }
         for (name in CONFIG_FILE_NAMES) {
             val (out, _) = exec("find \"$GAME_DATA_DIR\" -name \"$name\" -type f 2>/dev/null | head -1")

@@ -10,6 +10,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import com.gridlegends.graphicsassistant.data.EditorRouteState
 import com.gridlegends.graphicsassistant.data.EditorSource
 import com.gridlegends.graphicsassistant.ui.theme.GridLegendsTheme
 import com.gridlegends.graphicsassistant.ui.screens.AboutScreen
@@ -33,7 +34,12 @@ class MainActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     var currentScreen by rememberSaveable { mutableStateOf(Screen.HOME) }
                     var previousScreen by rememberSaveable { mutableStateOf(Screen.HOME) }
-                    var editorSource by rememberSaveable { mutableStateOf<EditorSource?>(null) }
+                    var editorRoute by rememberSaveable { mutableStateOf<EditorRouteState?>(null) }
+
+                    fun openEditor(source: EditorSource) {
+                        editorRoute = EditorRouteState.open(source)
+                        currentScreen = Screen.EDITOR
+                    }
 
                     fun navigateToAbout() {
                         previousScreen = currentScreen
@@ -42,7 +48,7 @@ class MainActivity : ComponentActivity() {
 
                     fun navigateBack() {
                         currentScreen = when (currentScreen) {
-                            Screen.EDITOR -> if (editorSource is EditorSource.BundledPreset) {
+                            Screen.EDITOR -> if (editorRoute?.source is EditorSource.BundledPreset) {
                                 Screen.PRESET_LIBRARY
                             } else {
                                 Screen.HOME
@@ -55,7 +61,7 @@ class MainActivity : ComponentActivity() {
 
                     BackHandler(
                         enabled = currentScreen != Screen.HOME &&
-                            (currentScreen != Screen.EDITOR || editorSource == null)
+                            (currentScreen != Screen.EDITOR || editorRoute == null)
                     ) {
                         navigateBack()
                     }
@@ -65,8 +71,7 @@ class MainActivity : ComponentActivity() {
                             HomeScreen(
                                 context = this@MainActivity,
                                 onAuthorized = { path, content, accessMode ->
-                                    editorSource = EditorSource.LiveConfig(accessMode, path, content)
-                                    currentScreen = Screen.EDITOR
+                                    openEditor(EditorSource.LiveConfig(accessMode, path, content))
                                 },
                                 onPresetExport = { currentScreen = Screen.PRESET_LIBRARY },
                                 onAbout = { navigateToAbout() }
@@ -76,19 +81,22 @@ class MainActivity : ComponentActivity() {
                             PresetLibraryScreen(
                                 onBack = { currentScreen = Screen.HOME },
                                 onPresetSelected = { preset ->
-                                    editorSource = EditorSource.BundledPreset(preset)
-                                    currentScreen = Screen.EDITOR
+                                    openEditor(EditorSource.BundledPreset(preset))
                                 }
                             )
                         }
                         Screen.EDITOR -> {
-                            val source = editorSource
-                            if (source == null) {
+                            val route = editorRoute
+                            if (route == null) {
                                 LaunchedEffect(Unit) { navigateBack() }
                             } else {
                                 EditorScreen(
                                     context = this@MainActivity,
-                                    source = source,
+                                    source = route.source,
+                                    session = route.session,
+                                    onSessionChange = { nextSession ->
+                                        editorRoute = editorRoute?.withSession(nextSession)
+                                    },
                                     onBack = { navigateBack() },
                                     onAbout = { navigateToAbout() }
                                 )

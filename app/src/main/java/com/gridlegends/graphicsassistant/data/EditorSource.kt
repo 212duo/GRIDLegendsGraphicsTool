@@ -15,7 +15,13 @@ sealed interface EditorSource : Serializable {
     ) : EditorSource
 }
 
+fun EditorSource.sessionKey(): String = when (this) {
+    is EditorSource.LiveConfig -> "live:$accessMode:${configPath.orEmpty()}"
+    is EditorSource.BundledPreset -> "preset:${preset.metadata.id}"
+}
+
 fun EditorSource.logSummary(): String = when (this) {
-    is EditorSource.LiveConfig -> "LiveConfig(mode=$accessMode, path=$configPath, contentLength=${configContent?.length ?: 0})"
+    is EditorSource.LiveConfig -> "LiveConfig(mode=$accessMode, " +
+        "pathLength=${configPath?.length ?: 0}, contentLength=${configContent?.length ?: 0})"
     is EditorSource.BundledPreset -> "BundledPreset(id=${preset.metadata.id}, bytesLength=${preset.baseBytes.size}, contentLength=${preset.baseContent.length})"
 }

@@ -43,7 +43,7 @@ class ShizukuFileOperator(
                 newProcessMethod?.isAccessible = true
                 log("newProcess: ${if (newProcessMethod != null) "找到" else "未找到"}")
             } catch (e: Exception) {
-                log("反射失败: ${e.javaClass.simpleName}: ${e.message}")
+                log("反射失败 type=${e.javaClass.simpleName}")
             }
             return newProcessMethod
         }
@@ -97,7 +97,7 @@ class ShizukuFileOperator(
             log("binder: $ping")
         } catch (e: Exception) {
             sb.appendLine("Shizuku 错误: ${e.message}")
-            log("ERROR binder: ${e.message}")
+            log("ERROR binder type=${e.javaClass.simpleName}")
             lastDiag = sb.toString()
             return lastDiag
         }
@@ -138,19 +138,19 @@ class ShizukuFileOperator(
         for (name in CONFIG_FILE_NAMES) {
             val path = "$prefsDir/$name"
             val (out, code) = exec("[ -f \"$path\" ] && echo EXISTS")
-            log("检查 $path -> ${out.trim()} exit=$code")
-            if (out.trim() == "EXISTS") {
-                log("找到: $path")
+            val found = out.trim() == "EXISTS"
+            log(safeFileLookupSummary("SHIZUKU", "direct", path, out, found, code))
+            if (found) {
                 return path
             }
         }
         for (name in CONFIG_FILE_NAMES) {
-            val (out, _) = exec("find \"$GAME_DATA_DIR\" -name \"$name\" -type f 2>/dev/null | head -1")
-            val found = out.trim()
-            log("搜索 $name -> $found")
-            if (found.isNotEmpty()) {
-                log("搜索找到: $found")
-                return found
+            val (out, code) = exec("find \"$GAME_DATA_DIR\" -name \"$name\" -type f 2>/dev/null | head -1")
+            val foundPath = out.trim()
+            val found = foundPath.isNotEmpty()
+            log(safeFileLookupSummary("SHIZUKU", "recursive", foundPath, out, found, code))
+            if (found) {
+                return foundPath
             }
         }
         log("未找到配置文件")
@@ -164,14 +164,14 @@ class ShizukuFileOperator(
     }
 
     fun readConfigFromPath(filePath: String): Map<String, String>? {
-        log("readConfigFromPath: $filePath")
+        log("readConfigFromPath 开始")
         val content = readFile(filePath) ?: return null
         log("readConfigFromPath: 解析 ${content.length} 字符")
         return ConfigParser.parse(content.byteInputStream())
     }
 
     fun readFile(filePath: String): String? {
-        log("readFile: $filePath")
+        log("readFile 开始")
         val (out, code) = exec("cat \"$filePath\"")
         return if (code == 0 && out.isNotEmpty()) {
             log("readFile 成功: ${out.length} 字符")
@@ -183,7 +183,7 @@ class ShizukuFileOperator(
     }
 
     fun writeConfigToPath(filePath: String, paramValues: Map<String, ParamValue>): Boolean {
-        log("writeConfigToPath: $filePath")
+        log("writeConfigToPath 开始")
         val originalContent = readFile(filePath) ?: return false
         val backupPath = "${filePath.substringBeforeLast('/')}/${ConfigWriter.backupFileName()}"
         exec("cp \"$filePath\" \"$backupPath\"")

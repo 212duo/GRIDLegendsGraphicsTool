@@ -37,6 +37,7 @@ import com.gridlegends.graphicsassistant.fileaccess.RootStatus
 import com.gridlegends.graphicsassistant.fileaccess.SafManager
 import com.gridlegends.graphicsassistant.fileaccess.ShizukuFileOperator
 import com.gridlegends.graphicsassistant.fileaccess.logBuffer
+import com.gridlegends.graphicsassistant.fileaccess.safePathResultSummary
 import com.gridlegends.graphicsassistant.fileaccess.ShizukuManager
 import com.gridlegends.graphicsassistant.fileaccess.ShizukuStatus
 import com.gridlegends.graphicsassistant.ui.theme.*
@@ -101,7 +102,7 @@ fun HomeScreen(
         when (accessMode) {
             AccessMode.ROOT -> if (rootStatus == RootStatus.READY) {
                 val found = rootOp.findConfigFile()
-                Log.d("GLGraphics", "HomeScreen: root findConfigFile -> $found")
+                Log.d("GLGraphics", safePathResultSummary("ROOT", "home-find", found))
                 foundConfigPath = found
                 if (found != null) {
                     foundConfigContent = rootOp.readFile(found)
@@ -115,7 +116,7 @@ fun HomeScreen(
             }
             AccessMode.SHIZUKU -> if (shizukuStatus == ShizukuStatus.READY) {
                 val found = shizukuOp.findConfigFile()
-                Log.d("GLGraphics", "HomeScreen: findConfigFile -> $found")
+                Log.d("GLGraphics", safePathResultSummary("SHIZUKU", "home-find", found))
                 foundConfigPath = found
                 if (found != null) {
                     foundConfigContent = shizukuOp.readFile(found)
@@ -206,7 +207,7 @@ fun HomeScreen(
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "无需授权游戏目录，制作后导出到下载目录。",
+                text = "无需授权游戏目录，制作后通过系统文件保存器选择保存位置。",
                 color = TextSecondary,
                 fontSize = 13.sp,
                 textAlign = TextAlign.Center
@@ -283,7 +284,11 @@ fun HomeScreen(
                 if (isReady) {
                     Button(
                         onClick = {
-                            Log.d("GLGraphics", "HomeScreen: Root 进入编辑 path=$foundConfigPath, content长度=${foundConfigContent?.length}")
+                            Log.d(
+                                "GLGraphics",
+                                safePathResultSummary("ROOT", "editor-open", foundConfigPath) +
+                                    " contentLength=${foundConfigContent?.length ?: 0}"
+                            )
                             onAuthorized(foundConfigPath, foundConfigContent, AccessMode.ROOT)
                         },
                         modifier = Modifier
@@ -438,7 +443,11 @@ fun HomeScreen(
                 if (isReady) {
                     Button(
                         onClick = {
-                            Log.d("GLGraphics", "HomeScreen: 进入编辑 path=$foundConfigPath, content长度=${foundConfigContent?.length}")
+                            Log.d(
+                                "GLGraphics",
+                                safePathResultSummary("SHIZUKU", "editor-open", foundConfigPath) +
+                                    " contentLength=${foundConfigContent?.length ?: 0}"
+                            )
                             onAuthorized(foundConfigPath, foundConfigContent, AccessMode.SHIZUKU)
                         },
                         modifier = Modifier
@@ -544,7 +553,11 @@ fun HomeScreen(
                 } else if (isReady) {
                     Button(
                         onClick = {
-                            Log.d("GLGraphics", "HomeScreen: 进入编辑 path=$foundConfigPath, content长度=${foundConfigContent?.length}")
+                            Log.d(
+                                "GLGraphics",
+                                safePathResultSummary("SAF", "editor-open", foundConfigPath) +
+                                    " contentLength=${foundConfigContent?.length ?: 0}"
+                            )
                             onAuthorized(foundConfigPath, foundConfigContent, AccessMode.SAF)
                         },
                         modifier = Modifier
