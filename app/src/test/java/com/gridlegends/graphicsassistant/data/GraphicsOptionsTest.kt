@@ -47,6 +47,21 @@ class GraphicsOptionsTest {
             assertEquals(ParamControlType.SWITCH, params.getValue(key).controlType)
             assertEquals(switchOptions, params.getValue(key).options)
         }
+
+        val expectedSections = mapOf(
+            "AmbientOcclusion" to ParamSection.QUALITY,
+            "LightingQuality" to ParamSection.REFLECTIONS,
+            "Mirrors" to ParamSection.REFLECTIONS,
+            "Particles" to ParamSection.POST_PROCESSING,
+            "Skidmarks" to ParamSection.DETAIL,
+            "WeatherEffects" to ParamSection.POST_PROCESSING,
+            "Graphics/OptimisationResolutionMultiplier" to ParamSection.DISPLAY,
+            "VerticalSync" to ParamSection.DISPLAY,
+            "ReduceVisibleRain" to ParamSection.POST_PROCESSING
+        )
+        expectedSections.forEach { (key, section) ->
+            assertEquals("Unexpected section for $key", section, params.getValue(key).section)
+        }
     }
 
     @Test
@@ -128,6 +143,110 @@ class GraphicsOptionsTest {
         assertEquals("90", reparsed["Graphics/OptimisationResolutionMultiplier"])
         assertEquals("1", reparsed["BatterySaver"])
         assertEquals("1", reparsed["Graphics/MetalFX"])
+    }
+
+    @Test
+    fun settingAttributeFormatWritesSlashKeysAndPreservesUnmanagedSettings() {
+        val existingContent = """
+            <Settings>
+              <setting Value="75" Name="Graphics/OptimisationResolutionMultiplier" />
+              <Setting name="BatterySaver" value="1" />
+            </Settings>
+        """.trimIndent()
+
+        val parsed = ConfigParser.parse(ByteArrayInputStream(existingContent.toByteArray()))
+        assertEquals("75", parsed["Graphics/OptimisationResolutionMultiplier"])
+
+        val output = ByteArrayOutputStream()
+        ConfigWriter.write(
+            output = output,
+            existingContent = existingContent,
+            paramValues = listOf(ParamValue("Graphics/OptimisationResolutionMultiplier", "90"))
+        )
+
+        val rewritten = output.toString(Charsets.UTF_8.name())
+        val reparsed = ConfigParser.parse(ByteArrayInputStream(rewritten.toByteArray()))
+        assertEquals("90", reparsed["Graphics/OptimisationResolutionMultiplier"])
+        assertEquals("1", reparsed["BatterySaver"])
+    }
+
+    @Test
+    fun nestedElementFormatRoundTripsSlashKeysAndPreservesUnmanagedElements() {
+        val existingContent = """
+            <Settings>
+              <AmbientOcclusion>1</AmbientOcclusion>
+              <Graphics>
+                <OptimisationResolutionMultiplier>75</OptimisationResolutionMultiplier>
+                <MetalFX>1</MetalFX>
+              </Graphics>
+            </Settings>
+        """.trimIndent()
+
+        val parsed = ConfigParser.parse(ByteArrayInputStream(existingContent.toByteArray()))
+        assertEquals("75", parsed["Graphics/OptimisationResolutionMultiplier"])
+
+        val output = ByteArrayOutputStream()
+        ConfigWriter.write(
+            output = output,
+            existingContent = existingContent,
+            paramValues = listOf(ParamValue("Graphics/OptimisationResolutionMultiplier", "90"))
+        )
+
+        val rewritten = output.toString(Charsets.UTF_8.name())
+        val reparsed = ConfigParser.parse(ByteArrayInputStream(rewritten.toByteArray()))
+        assertEquals("90", reparsed["Graphics/OptimisationResolutionMultiplier"])
+        assertTrue(rewritten.contains("<MetalFX>1</MetalFX>"))
+    }
+
+    @Test
+    fun nestedElementFormatOnlyManagesDirectChildrenOfTheNamedBlock() {
+        val existingContent = """
+            <Settings>
+              <Graphics>
+                <OptimisationResolutionMultiplier>75</OptimisationResolutionMultiplier>
+                <Unmanaged>
+                  <OptimisationResolutionMultiplier>55</OptimisationResolutionMultiplier>
+                </Unmanaged>
+              </Graphics>
+            </Settings>
+        """.trimIndent()
+
+        val parsed = ConfigParser.parse(ByteArrayInputStream(existingContent.toByteArray()))
+        assertEquals("75", parsed["Graphics/OptimisationResolutionMultiplier"])
+
+        val output = ByteArrayOutputStream()
+        ConfigWriter.write(
+            output = output,
+            existingContent = existingContent,
+            paramValues = listOf(ParamValue("Graphics/OptimisationResolutionMultiplier", "90"))
+        )
+
+        val rewritten = output.toString(Charsets.UTF_8.name())
+        val reparsed = ConfigParser.parse(ByteArrayInputStream(rewritten.toByteArray()))
+        assertEquals("90", reparsed["Graphics/OptimisationResolutionMultiplier"])
+        assertTrue(
+            rewritten.contains(
+                "<Unmanaged>\n      <OptimisationResolutionMultiplier>55</OptimisationResolutionMultiplier>\n    </Unmanaged>"
+            )
+        )
+    }
+
+    @Test
+    fun freshConfigIncludesManagedValuesFromNestedRegistryBlocks() {
+        val output = ByteArrayOutputStream()
+        ConfigWriter.write(
+            output = output,
+            paramValues = listOf(
+                ParamValue("AmbientOcclusion", "3"),
+                ParamValue("Graphics/OptimisationResolutionMultiplier", "90"),
+                ParamValue("Setup/EnableSSR", "3")
+            )
+        )
+
+        val parsed = ConfigParser.parse(ByteArrayInputStream(output.toByteArray()))
+        assertEquals("3", parsed["AmbientOcclusion"])
+        assertEquals("90", parsed["Graphics/OptimisationResolutionMultiplier"])
+        assertEquals("3", parsed["Setup/EnableSSR"])
     }
 
     private companion object {

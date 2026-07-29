@@ -9,6 +9,7 @@ object ConfigParser {
     fun parse(input: InputStream): Map<String, String> {
         val result = mutableMapOf<String, String>()
         val keyStack = mutableListOf<String>()
+        val elementBlockStack = mutableListOf<ElementBlock>()
 
         val factory = XmlPullParserFactory.newInstance()
         factory.isNamespaceAware = false
@@ -49,11 +50,36 @@ object ConfigParser {
                                 result[parser.name] = text
                             }
                         }
+                        elementBlockName(parser.name) != null -> {
+                            elementBlockStack.add(
+                                ElementBlock(
+                                    name = elementBlockName(parser.name)!!,
+                                    depth = parser.depth
+                                )
+                            )
+                        }
+                        elementBlockStack.isNotEmpty() &&
+                            parser.depth == elementBlockStack.last().depth + 1 -> {
+                            val key = "${elementBlockStack.last().name}/${parser.name}"
+                            if (ParamDefinitions.findByKey(key) != null) {
+                                val text = parser.nextText().trim()
+                                if (text.isNotBlank()) {
+                                    result[key] = text
+                                }
+                            }
+                        }
                     }
                 }
                 XmlPullParser.END_TAG -> {
                     if (parser.name.equals("key", ignoreCase = true) && keyStack.isNotEmpty()) {
                         keyStack.removeAt(keyStack.lastIndex)
+                    }
+                    if (
+                        elementBlockStack.isNotEmpty() &&
+                        parser.depth == elementBlockStack.last().depth &&
+                        parser.name.equals(elementBlockStack.last().name, ignoreCase = true)
+                    ) {
+                        elementBlockStack.removeAt(elementBlockStack.lastIndex)
                     }
                 }
             }
@@ -89,6 +115,16 @@ object ConfigParser {
             else -> null
         }
     }
+
+    private fun elementBlockName(name: String): String? {
+        return listOf("Graphics", "Performance", "Setup")
+            .firstOrNull { it.equals(name, ignoreCase = true) }
+    }
+
+    private data class ElementBlock(
+        val name: String,
+        val depth: Int
+    )
 
     private fun List<String>.endsWith(vararg names: String): Boolean {
         if (size < names.size) return false

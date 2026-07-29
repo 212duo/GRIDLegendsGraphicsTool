@@ -31,9 +31,7 @@ object ConfigWriter {
         )
         if (replaced != content) return replaced
 
-        if (key.contains("/")) return content
-
-        return replaceLegacyFormats(content, location.valueName, value)
+        return replaceLegacyFormats(content, key, location, value)
     }
 
     private fun replaceValueInBlock(
@@ -52,26 +50,89 @@ object ConfigWriter {
         )
     }
 
-    private fun replaceLegacyFormats(content: String, valueName: String, newValue: String): String {
-        var updated = content
+    private fun replaceLegacyFormats(
+        content: String,
+        key: String,
+        location: ValueLocation,
+        newValue: String
+    ): String {
         val escapedValue = Regex.escapeReplacement(newValue)
 
-        val valuePattern = Regex(
-            """(<value\s+name="${Regex.escape(valueName)}"\s+type="[^"]*">)[^<]*(</value>)"""
-        )
-        updated = valuePattern.replaceFirst(updated, "$1$escapedValue$2")
-
         val settingPattern = Regex(
-            """(<Setting\s+name="${Regex.escape(valueName)}"\s+value=")[^"]*(")"""
+            pattern = """(<Setting\b(?=[^>]*\bname\s*=\s*["']${Regex.escape(key)}["'])[^>]*\bvalue\s*=\s*)(["'])[^"']*\2""",
+            option = RegexOption.IGNORE_CASE
         )
-        updated = settingPattern.replaceFirst(updated, "$1$escapedValue$2")
+        val settingUpdated = settingPattern.replaceFirst(content, "$1$2$escapedValue$2")
+        if (settingUpdated != content) return settingUpdated
+
+        if (key.contains("/")) {
+            return replaceElementInBlock(
+                content = content,
+                blockName = location.blockName,
+                valueName = location.valueName,
+                newValue = newValue
+            )
+        }
+
+        val valuePattern = Regex(
+            """(<value\s+name="${Regex.escape(location.valueName)}"\s+type="[^"]*">)[^<]*(</value>)"""
+        )
+        val valueUpdated = valuePattern.replaceFirst(content, "$1$escapedValue$2")
+        if (valueUpdated != content) return valueUpdated
 
         val elementPattern = Regex(
-            """(<${Regex.escape(valueName)}>)\s*[^<]*(</${Regex.escape(valueName)}>)"""
+            """(<${Regex.escape(location.valueName)}>)\s*[^<]*(</${Regex.escape(location.valueName)}>)"""
         )
-        updated = elementPattern.replaceFirst(updated, "$1$escapedValue$2")
+        return elementPattern.replaceFirst(content, "$1$escapedValue$2")
+    }
 
-        return updated
+    private fun replaceElementInBlock(
+        content: String,
+        blockName: String,
+        valueName: String,
+        newValue: String
+    ): String {
+        val blockStartPattern = Regex(
+            pattern = """<\s*${Regex.escape(blockName)}\b[^>]*>""",
+            option = RegexOption.IGNORE_CASE
+        )
+        val tagPattern = Regex(
+            pattern = """<\s*(/?)\s*([A-Za-z_][A-Za-z0-9_.:-]*)\b[^>]*>"""
+        )
+        val blockStart = blockStartPattern.find(content) ?: return content
+        var depth = 0
+        var tag = tagPattern.find(content, blockStart.range.last + 1)
+
+        while (tag != null) {
+            val isClosing = tag.groupValues[1].isNotEmpty()
+            val tagName = tag.groupValues[2]
+            val isSelfClosing = !isClosing && tag.value.trimEnd().endsWith("/>")
+
+            if (isClosing) {
+                if (depth == 0 && tagName.equals(blockName, ignoreCase = true)) {
+                    return content
+                }
+                if (depth > 0) depth--
+            } else {
+                if (depth == 0 && tagName.equals(valueName, ignoreCase = true)) {
+                    val closingTag = tagPattern.find(content, tag.range.last + 1) ?: return content
+                    val closesValue = closingTag.groupValues[1].isNotEmpty() &&
+                        closingTag.groupValues[2].equals(valueName, ignoreCase = true)
+                    if (!closesValue) return content
+
+                    return content.replaceRange(
+                        startIndex = tag.range.last + 1,
+                        endIndex = closingTag.range.first,
+                        replacement = newValue
+                    )
+                }
+                if (!isSelfClosing) depth++
+            }
+
+            tag = tagPattern.find(content, tag.range.last + 1)
+        }
+
+        return content
     }
 
     private fun generateFreshConfig(paramValues: List<ParamValue>): String {
@@ -87,6 +148,16 @@ object ConfigWriter {
             for (param in ParamDefinitions.allParams.filter { !it.key.contains("/") }) {
                 val value = paramMap[param.key]?.value ?: continue
                 appendLine("""                        <value name="${param.key}" type="${inferType(value)}">$value</value>""")
+            }
+            for (blockName in listOf("Graphics", "Performance")) {
+                val blockParams = ParamDefinitions.allParams.filter { it.key.startsWith("$blockName/") }
+                if (blockParams.none { paramMap.containsKey(it.key) }) continue
+                appendLine("""                        <key name="$blockName">""")
+                for (param in blockParams) {
+                    val value = paramMap[param.key]?.value ?: continue
+                    appendLine("""                            <value name="${param.key.substringAfter("/")}" type="${inferType(value)}">$value</value>""")
+                }
+                appendLine("""                        </key>""")
             }
             appendLine("""                    </key>""")
             appendLine("""                    <key name="Setup">""")
