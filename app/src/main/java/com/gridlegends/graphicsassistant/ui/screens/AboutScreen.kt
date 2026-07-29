@@ -113,7 +113,7 @@ fun AboutScreen(
                     FeatureItem("离线导出", "无需游戏目录权限，可从 20 份真实配置制作并导出 preferences")
                     FeatureItem("精细调整", "支持帧率、分辨率、纹理、阴影、反射、后处理等参数")
                     FeatureItem("访问方式", "支持 Root、Shizuku 和 SAF，按设备权限情况选择")
-                    FeatureItem("自动备份", "保存前会创建 preferences_backup_* 备份文件")
+                    FeatureItem("自动备份", "直接编辑流程保存前会创建 preferences_backup_* 备份文件")
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -175,8 +175,7 @@ fun AboutScreen(
                     NoticeItem("本工具是非官方开源项目，与 Codemasters、EA、Feral Interactive 无从属或授权关系。")
                     NoticeItem("GRID Legends、Codemasters、EA、Feral Interactive 等名称和商标归其各自权利方所有。")
                     NoticeItem("修改画质配置可能导致游戏卡顿、闪退或无法进入游戏，请根据设备性能谨慎选择预设。")
-                    NoticeItem("保存前会自动创建备份；如果出现异常，可用备份文件恢复原始配置。")
-                    NoticeItem("手动替换 preferences 前请关闭游戏并备份原文件。")
+                    NoticeItem("预设导出不会操作或备份游戏原文件，手动替换前请关闭游戏并自行备份。")
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
