@@ -261,7 +261,6 @@ object GraphicsPresets {
             "Graphics/VolumetricLights" to if (volumetrics == "3") "3, 0, 0" else "1, 0, 0",
             "Graphics/WeatherEffects" to graphicsLevel,
             "Graphics/Particles" to if (post == "2") "3, 0, 0" else "0, 0, 0",
-            "Graphics/MetalFX" to if (graphicsLevel == "3, 0, 0") "3, 0, 0" else "0, 0, 0",
             "Graphics/Mirrors" to if (graphicsLevel == "3, 0, 0") "3, 0, 0" else "0, 0, 0",
             "Graphics/LightingQuality" to graphicsLevel,
             "Graphics/SmokeShadows" to if (post == "2") "3, 0, 0" else "1, 0, 0",
@@ -278,6 +277,23 @@ object GraphicsPresets {
                 "None, None, None"
             }
         )
-        return GraphicsPreset(name, description, values)
+        val scalarGraphicsValues = listOf(
+            "AmbientOcclusion",
+            "LightingQuality",
+            "Mirrors",
+            "Particles",
+            "Skidmarks",
+            "WeatherEffects"
+        ).associateWith { key ->
+            values.getValue("Graphics/$key").substringBefore(',').trim()
+        }
+        return GraphicsPreset(
+            name,
+            description,
+            values + scalarGraphicsValues + mapOf(
+                "VerticalSync" to "0",
+                "ReduceVisibleRain" to "0"
+            )
+        )
     }
 }
