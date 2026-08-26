@@ -9,16 +9,48 @@ object ConfigWriter {
         paramValues: List<ParamValue>,
         existingContent: String? = null
     ) {
+        val valuesToWrite = synchronizeGraphicsProfileValues(paramValues)
         if (existingContent != null) {
             var content: String = existingContent
-            for (param in paramValues) {
+            for (param in valuesToWrite) {
                 content = replaceParam(content, param.key, param.value)
             }
             output.write(content.toByteArray(Charsets.UTF_8))
         } else {
-            output.write(generateFreshConfig(paramValues).toByteArray(Charsets.UTF_8))
+            output.write(generateFreshConfig(valuesToWrite).toByteArray(Charsets.UTF_8))
         }
         output.flush()
+    }
+
+    /**
+     * GRID Legends keeps a current value and a value for the Graphics preset.
+     * When a user edits a current value directly, mirror it to the Graphics
+     * block unless a preset explicitly supplied that profile value.
+     */
+    private fun synchronizeGraphicsProfileValues(paramValues: List<ParamValue>): List<ParamValue> {
+        val byKey = paramValues.associateBy { it.key }.toMutableMap()
+        val result = paramValues.toMutableList()
+
+        graphicsProfileKeys.forEach { currentKey ->
+            val current = byKey[currentKey] ?: return@forEach
+            val profileKey = "Graphics/$currentKey"
+            if (byKey.containsKey(profileKey)) return@forEach
+
+            val profileValue = if (currentKey in integerGraphicsProfileKeys) {
+                current.value
+            } else {
+                "${current.value}, 0, 0"
+            }
+            val generated = ParamValue(
+                key = profileKey,
+                value = profileValue,
+                originalValue = profileValue,
+                isModified = current.isModified
+            )
+            byKey[profileKey] = generated
+            result += generated
+        }
+        return result
     }
 
     private fun replaceParam(content: String, key: String, value: String): String {
@@ -177,6 +209,31 @@ object ConfigWriter {
     private fun inferType(value: String): String {
         return if (value.contains(",")) "string" else "integer"
     }
+
+    private val graphicsProfileKeys = setOf(
+        "FramerateLimit",
+        "AmbientOcclusion",
+        "AntiAliasing",
+        "Crowds",
+        "DynamicResolution",
+        "FireworksAndConfetti",
+        "GroundCover",
+        "LightingQuality",
+        "LODQuality",
+        "Mirrors",
+        "Particles",
+        "PostProcess",
+        "ScreenSpaceReflections",
+        "Shadows",
+        "Skidmarks",
+        "SmokeShadows",
+        "TextureQuality",
+        "VehicleReflections",
+        "VolumetricLights",
+        "WeatherEffects"
+    )
+
+    private val integerGraphicsProfileKeys = setOf("FramerateLimit", "FireworksAndConfetti")
 
     fun backupFileName(): String {
         return "preferences_backup_${System.currentTimeMillis()}"

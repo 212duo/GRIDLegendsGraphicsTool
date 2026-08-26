@@ -23,8 +23,8 @@ class GraphicsOptionsTest {
     @Test
     fun recommendedOptionsUseTheDesignedControlsRangesAndChoices() {
         val params = ParamDefinitions.allParams.associateBy { it.key }
-        val levelOptions = mapOf("1" to "低", "2" to "中", "3" to "高")
-        val optionalLevelOptions = mapOf("0" to "关", "1" to "低", "2" to "中", "3" to "高")
+        val levelOptions = mapOf("1" to "低", "2" to "中", "3" to "高", "4" to "极高")
+        val optionalLevelOptions = mapOf("0" to "关", "1" to "低", "2" to "中", "3" to "高", "4" to "极高")
         val switchOptions = mapOf("0" to "关", "1" to "开")
 
         listOf("AmbientOcclusion", "LightingQuality", "Skidmarks", "WeatherEffects").forEach { key ->
@@ -113,6 +113,7 @@ class GraphicsOptionsTest {
                         <value name="ReduceVisibleRain" type="integer">1</value>
                         <value name="BatterySaver" type="integer">1</value>
                         <key name="Graphics">
+                          <value name="AmbientOcclusion" type="string">1, 0, 0</value>
                           <value name="OptimisationResolutionMultiplier" type="integer">75</value>
                           <value name="MetalFX" type="integer">1</value>
                         </key>
@@ -140,6 +141,7 @@ class GraphicsOptionsTest {
         val rewritten = output.toString(Charsets.UTF_8.name())
         val reparsed = ConfigParser.parse(ByteArrayInputStream(rewritten.toByteArray()))
         assertEquals("3", reparsed["AmbientOcclusion"])
+        assertEquals("3, 0, 0", reparsed["Graphics/AmbientOcclusion"])
         assertEquals("90", reparsed["Graphics/OptimisationResolutionMultiplier"])
         assertEquals("1", reparsed["BatterySaver"])
         assertEquals("1", reparsed["Graphics/MetalFX"])

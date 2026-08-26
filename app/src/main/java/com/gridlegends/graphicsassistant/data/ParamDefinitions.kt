@@ -94,7 +94,7 @@ object ParamDefinitions {
             description = "影响车辆、赛道和环境贴图清晰度。高档位需要更多显存。",
             controlType = ParamControlType.LEVEL_SELECTOR,
             section = ParamSection.QUALITY,
-            options = mapOf("1" to "低", "2" to "中", "3" to "高")
+            options = mapOf("1" to "低", "2" to "中", "3" to "高", "4" to "极高")
         ),
         GraphicsParam(
             key = "AntiAliasing",
@@ -102,23 +102,23 @@ object ParamDefinitions {
             description = "降低画面边缘锯齿。更高档位画面更平滑，也会增加性能开销。",
             controlType = ParamControlType.LEVEL_SELECTOR,
             section = ParamSection.QUALITY,
-            options = mapOf("1" to "低", "2" to "中", "3" to "高")
+            options = mapOf("1" to "低", "2" to "中", "3" to "高", "4" to "极高")
         ),
         GraphicsParam(
             key = "Shadows",
             displayName = "当前阴影",
-            description = "当前配置中的阴影等级。极限预设使用 3。",
+            description = "当前配置中的阴影等级。高为 3，极高为 4。",
             controlType = ParamControlType.LEVEL_SELECTOR,
             section = ParamSection.QUALITY,
-            options = mapOf("1" to "低", "2" to "中", "3" to "高")
+            options = mapOf("1" to "低", "2" to "中", "3" to "高", "4" to "极高")
         ),
         GraphicsParam(
             key = "LODQuality",
             displayName = "当前细节距离",
-            description = "当前配置中的 LOD 等级。",
+            description = "当前配置中的 LOD 等级。高为 3，极高为 4。",
             controlType = ParamControlType.LEVEL_SELECTOR,
             section = ParamSection.QUALITY,
-            options = mapOf("1" to "中", "2" to "高", "3" to "极高")
+            options = mapOf("1" to "低", "2" to "中", "3" to "高", "4" to "极高")
         ),
         GraphicsParam(
             key = "GroundCover",
@@ -156,10 +156,10 @@ object ParamDefinitions {
         GraphicsParam(
             key = "PostProcess",
             displayName = "当前后处理",
-            description = "当前后处理等级。极限预设使用 2。",
+            description = "当前后处理等级。高为 3，极高为 4。",
             controlType = ParamControlType.LEVEL_SELECTOR,
             section = ParamSection.POST_PROCESSING,
-            options = mapOf("0" to "关闭", "1" to "低", "2" to "高")
+            options = mapOf("0" to "关闭", "1" to "低", "2" to "中", "3" to "高", "4" to "极高")
         ),
         GraphicsParam(
             key = "MotionBlur",
@@ -167,7 +167,7 @@ object ParamDefinitions {
             description = "高速运动时的模糊效果。提高会增强速度感，也可能降低画面清晰度。",
             controlType = ParamControlType.LEVEL_SELECTOR,
             section = ParamSection.POST_PROCESSING,
-            options = mapOf("1" to "低", "2" to "中", "3" to "高")
+            options = mapOf("1" to "低", "2" to "中", "3" to "高", "4" to "极高")
         ),
         GraphicsParam(
             key = "Setup/EnableSSR",
@@ -175,15 +175,15 @@ object ParamDefinitions {
             description = "控制屏幕空间反射。开启后车身和湿地反射更明显，性能开销较高。",
             controlType = ParamControlType.RADIO_GROUP,
             section = ParamSection.POST_PROCESSING,
-            options = mapOf("0" to "关", "3" to "高")
+            options = mapOf("0" to "关", "3" to "高", "4" to "极高")
         ),
         GraphicsParam(
             key = "Setup/EnableVolumetrics",
             displayName = "体积光开关",
-            description = "真实配置位于 Setup/EnableVolumetrics。0 关闭，1 普通，3 极限。",
+            description = "真实配置位于 Setup/EnableVolumetrics。0 关闭，3 高，4 极高。",
             controlType = ParamControlType.RADIO_GROUP,
             section = ParamSection.POST_PROCESSING,
-            options = mapOf("0" to "关", "1" to "普通", "3" to "极限")
+            options = mapOf("0" to "关", "1" to "低", "2" to "中", "3" to "高", "4" to "极高")
         ),
         GraphicsParam(
             key = "VolumetricLights",
@@ -191,7 +191,7 @@ object ParamDefinitions {
             description = "当前配置中的体积光等级。",
             controlType = ParamControlType.LEVEL_SELECTOR,
             section = ParamSection.POST_PROCESSING,
-            options = mapOf("1" to "低", "2" to "高")
+            options = mapOf("1" to "低", "2" to "中", "3" to "高", "4" to "极高")
         ),
         GraphicsParam(
             key = "FireworksAndConfetti",
@@ -199,7 +199,7 @@ object ParamDefinitions {
             description = "控制烟花和彩纸等赛后特效强度。提高会增加粒子效果负载。",
             controlType = ParamControlType.LEVEL_SELECTOR,
             section = ParamSection.POST_PROCESSING,
-            options = mapOf("1" to "普通", "3" to "极限")
+            options = mapOf("1" to "低", "2" to "中", "3" to "高", "4" to "极高")
         ),
         GraphicsParam(
             key = "Particles",
@@ -224,7 +224,7 @@ object ParamDefinitions {
             description = "当前配置中的反射等级。",
             controlType = ParamControlType.LEVEL_SELECTOR,
             section = ParamSection.REFLECTIONS,
-            options = mapOf("1" to "普通", "2" to "高")
+            options = mapOf("1" to "低", "2" to "中", "3" to "高", "4" to "极高")
         ),
         GraphicsParam(
             key = "VehicleReflections",
@@ -232,7 +232,7 @@ object ParamDefinitions {
             description = "当前配置中的车辆反射等级。",
             controlType = ParamControlType.LEVEL_SELECTOR,
             section = ParamSection.REFLECTIONS,
-            options = mapOf("1" to "普通", "3" to "高")
+            options = mapOf("1" to "低", "2" to "中", "3" to "高", "4" to "极高")
         ),
         GraphicsParam(
             key = "SmokeShadows",
@@ -240,7 +240,7 @@ object ParamDefinitions {
             description = "当前配置中的烟雾阴影等级。",
             controlType = ParamControlType.LEVEL_SELECTOR,
             section = ParamSection.REFLECTIONS,
-            options = mapOf("1" to "普通", "2" to "高")
+            options = mapOf("1" to "低", "2" to "中", "3" to "高", "4" to "极高")
         ),
         GraphicsParam(
             key = "Mirrors",
@@ -305,9 +305,9 @@ object ParamDefinitions {
 
     private fun levelOptions(includeZero: Boolean): Map<String, String> {
         return if (includeZero) {
-            mapOf("0" to "关", "1" to "低", "2" to "中", "3" to "高")
+            mapOf("0" to "关", "1" to "低", "2" to "中", "3" to "高", "4" to "极高")
         } else {
-            mapOf("1" to "低", "2" to "中", "3" to "高")
+            mapOf("1" to "低", "2" to "中", "3" to "高", "4" to "极高")
         }
     }
 }
