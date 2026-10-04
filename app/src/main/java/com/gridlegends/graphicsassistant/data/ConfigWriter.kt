@@ -278,10 +278,6 @@ object ConfigWriter {
 
     private val registryGraphicsBlock = Regex("""<key\s+name="GraphicsSettings"\s*>""")
 
-    fun backupFileName(): String {
-        return "preferences_backup_${System.currentTimeMillis()}"
-    }
-
     private data class ValueLocation(
         val blockName: String,
         val valueName: String

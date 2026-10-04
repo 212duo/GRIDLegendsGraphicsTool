@@ -1,26 +1,11 @@
 package com.gridlegends.graphicsassistant.fileaccess
 
-import android.content.Context
-import android.util.Log
-import com.gridlegends.graphicsassistant.data.ConfigParser
-import com.gridlegends.graphicsassistant.data.ConfigWriter
-import com.gridlegends.graphicsassistant.data.ParamValue
 import rikka.shizuku.Shizuku
-import java.io.ByteArrayOutputStream
 
-internal val logBuffer = mutableListOf<String>()
+private fun log(msg: String) = OperationLog.add(msg)
 
-private fun log(msg: String) {
-    val entry = "[${java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())}] $msg"
-    logBuffer.add(entry)
-    if (logBuffer.size > 200) logBuffer.removeAt(0)
-    Log.d("GLGraphics", msg)
-}
-
-class ShizukuFileOperator(
-    private val context: Context,
-    private val shizukuManager: ShizukuManager
-) {
+/** Blocking Shizuku shell access; call every method off the main thread. */
+class ShizukuFileOperator {
     companion object {
         private const val GAME_DATA_DIR = ConfigLocations.GAME_DATA_DIR
         private const val PREFS_SUBDIR = ConfigLocations.PREFS_SUBDIR
@@ -56,8 +41,8 @@ class ShizukuFileOperator(
         return try {
             val method = getNewProcessMethod()
             if (method == null) {
-                log("WARN: newProcess 为空，用 fallback")
-                return execFallback(command)
+                log("ERROR newProcess 不可用")
+                return Pair("", -1)
             }
             val process = method.invoke(null, arrayOf("sh", "-c", command), null, null) as Process
             val output = process.inputStream.bufferedReader().readText()
@@ -71,21 +56,11 @@ class ShizukuFileOperator(
         }
     }
 
-    private fun execFallback(command: String): Pair<String, Int> {
-        return try {
-            val cls = Class.forName("rikka.shizuku.ShizukuRemoteProcess")
-            val constructor = cls.getDeclaredConstructor(Array<String>::class.java)
-            constructor.isAccessible = true
-            val process = constructor.newInstance(arrayOf("sh", "-c", command)) as Process
-            val output = process.inputStream.bufferedReader().readText()
-            val exitCode = process.waitFor()
-            log(safeCommandSummary("SHIZUKU", command, output, "", exitCode))
-            Pair(output, exitCode)
-        } catch (e: Exception) {
-            log("ERROR fallback failed type=${e.javaClass.simpleName}")
-            Pair("exec error: ${e.message}", -1)
+    fun gateway(configPath: String): ConfigFileGateway =
+        ShellConfigGateway(configPath) { command ->
+            val (output, exitCode) = exec(command)
+            ShellResult(output, exitCode)
         }
-    }
 
     fun diagnose(): String {
         log("=== 开始诊断 ===")
@@ -157,19 +132,6 @@ class ShizukuFileOperator(
         return null
     }
 
-    fun readConfig(): Map<String, String>? {
-        log("readConfig 开始")
-        val filePath = findConfigFile() ?: return null
-        return readConfigFromPath(filePath)
-    }
-
-    fun readConfigFromPath(filePath: String): Map<String, String>? {
-        log("readConfigFromPath 开始")
-        val content = readFile(filePath) ?: return null
-        log("readConfigFromPath: 解析 ${content.length} 字符")
-        return ConfigParser.parse(content.byteInputStream())
-    }
-
     fun readFile(filePath: String): String? {
         log("readFile 开始")
         val (out, code) = exec("cat \"$filePath\"")
@@ -180,27 +142,5 @@ class ShizukuFileOperator(
             log("WARN readFile 失败: exit=$code empty=${out.isEmpty()}")
             null
         }
-    }
-
-    fun writeConfigToPath(filePath: String, paramValues: Map<String, ParamValue>): Boolean {
-        log("writeConfigToPath 开始")
-        val originalContent = readFile(filePath) ?: return false
-        val backupPath = "${filePath.substringBeforeLast('/')}/${ConfigWriter.backupFileName()}"
-        exec("cp \"$filePath\" \"$backupPath\"")
-        val outputStream = ByteArrayOutputStream()
-        ConfigWriter.write(outputStream, paramValues.values.toList(), originalContent)
-        val newContent = outputStream.toString("UTF-8")
-        val encoded = android.util.Base64.encodeToString(
-            newContent.toByteArray(Charsets.UTF_8), android.util.Base64.NO_WRAP
-        )
-        val (_, code) = exec("echo '$encoded' | base64 -d > \"$filePath\"")
-        log("writeConfigToPath exit=$code")
-        return code == 0
-    }
-
-    fun writeConfig(paramValues: Map<String, ParamValue>): Boolean {
-        log("writeConfig 开始")
-        val filePath = findConfigFile() ?: return false
-        return writeConfigToPath(filePath, paramValues)
     }
 }

@@ -54,17 +54,32 @@ class SafManager(private val context: Context) {
      * 保存 SAF 授权结果
      *
      * @param treeUri 用户选择的目录 URI
+     * @return 系统拒绝持久化授权时返回 false
      */
-    fun saveAuthorization(treeUri: Uri) {
-        // 获取持久化读写权限
+    fun saveAuthorization(treeUri: Uri): Boolean {
         val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or
                 Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-        context.contentResolver.takePersistableUriPermission(treeUri, flags)
+        try {
+            context.contentResolver.takePersistableUriPermission(treeUri, flags)
+        } catch (_: SecurityException) {
+            return false
+        }
+
+        // 重新授权其他目录时释放旧授权，避免持久化授权数量持续累积
+        val previousUri = getSavedTreeUri()
+        if (previousUri != null && previousUri != treeUri) {
+            try {
+                context.contentResolver.releasePersistableUriPermission(previousUri, flags)
+            } catch (_: SecurityException) {
+                // 旧授权可能已失效
+            }
+        }
 
         prefs.edit()
             .putString(KEY_TREE_URI, treeUri.toString())
             .putBoolean(KEY_IS_AUTHORIZED, true)
             .apply()
+        return true
     }
 
     /**

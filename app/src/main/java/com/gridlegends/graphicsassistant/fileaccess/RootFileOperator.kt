@@ -1,12 +1,6 @@
 package com.gridlegends.graphicsassistant.fileaccess
 
-import android.util.Base64
-import android.util.Log
-import com.gridlegends.graphicsassistant.data.ConfigParser
-import com.gridlegends.graphicsassistant.data.ConfigWriter
-import com.gridlegends.graphicsassistant.data.ParamValue
-import java.io.ByteArrayOutputStream
-
+/** Blocking root shell access; call every method off the main thread. */
 class RootFileOperator(
     private val rootManager: RootManager
 ) {
@@ -19,12 +13,7 @@ class RootFileOperator(
         )
     }
 
-    private fun log(message: String) {
-        val entry = "[${java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())}] ROOT $message"
-        logBuffer.add(entry)
-        if (logBuffer.size > 200) logBuffer.removeAt(0)
-        Log.d("GLGraphics", "ROOT $message")
-    }
+    private fun log(message: String) = OperationLog.add("ROOT $message")
 
     private fun exec(command: String): Pair<String, Int> {
         val result = rootManager.runRootCommand(command)
@@ -72,39 +61,14 @@ class RootFileOperator(
         return null
     }
 
-    fun readConfig(): Map<String, String>? {
-        val filePath = findConfigFile() ?: return null
-        return readConfigFromPath(filePath)
-    }
-
-    fun readConfigFromPath(filePath: String): Map<String, String>? {
-        val content = readFile(filePath) ?: return null
-        return ConfigParser.parse(content.byteInputStream())
-    }
-
     fun readFile(filePath: String): String? {
         val (out, code) = exec("cat \"$filePath\"")
         return if (code == 0 && out.isNotEmpty()) out else null
     }
 
-    fun writeConfigToPath(filePath: String, paramValues: Map<String, ParamValue>): Boolean {
-        val originalContent = readFile(filePath) ?: return false
-        val backupPath = "${filePath.substringBeforeLast('/')}/${ConfigWriter.backupFileName()}"
-        exec("cp \"$filePath\" \"$backupPath\"")
-
-        val outputStream = ByteArrayOutputStream()
-        ConfigWriter.write(outputStream, paramValues.values.toList(), originalContent)
-        val newContent = outputStream.toString("UTF-8")
-        val encoded = Base64.encodeToString(
-            newContent.toByteArray(Charsets.UTF_8),
-            Base64.NO_WRAP
-        )
-        val (_, code) = exec("echo '$encoded' | base64 -d > \"$filePath\"")
-        return code == 0
-    }
-
-    fun writeConfig(paramValues: Map<String, ParamValue>): Boolean {
-        val filePath = findConfigFile() ?: return false
-        return writeConfigToPath(filePath, paramValues)
-    }
+    fun gateway(configPath: String): ConfigFileGateway =
+        ShellConfigGateway(configPath) { command ->
+            val (output, exitCode) = exec(command)
+            ShellResult(output, exitCode)
+        }
 }
