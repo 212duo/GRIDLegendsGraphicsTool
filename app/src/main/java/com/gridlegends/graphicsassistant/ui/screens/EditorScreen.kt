@@ -36,6 +36,7 @@ import com.gridlegends.graphicsassistant.fileaccess.ShizukuFileOperator
 import com.gridlegends.graphicsassistant.fileaccess.ShizukuManager
 import com.gridlegends.graphicsassistant.ui.components.*
 import com.gridlegends.graphicsassistant.ui.theme.*
+import kotlinx.coroutines.launch
 
 /**
  * 画质编辑主界面（支持 Root、Shizuku 和 SAF 三种模式）
@@ -59,7 +60,10 @@ fun EditorScreen(
     val safOp = remember { FileOperator(context, safManager) }
 
     val sourceKey = source.sessionKey()
+    val scope = rememberCoroutineScope()
+    val presetRepository = remember { PresetRepository(context.applicationContext) }
     var isSaving by remember { mutableStateOf(false) }
+    var isApplyingPreset by remember { mutableStateOf(false) }
     val bundledPreset = (source as? EditorSource.BundledPreset)?.preset
     var showDiscardDialog by rememberSaveable { mutableStateOf(false) }
     var showInstallDialog by rememberSaveable { mutableStateOf(false) }
@@ -149,21 +153,35 @@ fun EditorScreen(
         if (hasUnexportedChanges) showDiscardDialog = true else onBack()
     }
 
-    fun applyPreset(preset: GraphicsPreset) {
-        sessionStore.updateSession(sourceKey) { current ->
-            val next = current.paramValues.toMutableMap()
-            preset.values.forEach { (key, value) ->
-                val originalValue = next[key]?.originalValue
-                    ?: current.rawConfigValues[key]
-                    ?: value
-                next[key] = ParamValue(
-                    key = key,
-                    value = value,
-                    originalValue = originalValue,
-                    isModified = value != originalValue
-                )
-            }
-            current.copyForEditor(paramValues = next)
+    fun applyPreset(metadata: PresetMetadata) {
+        if (isApplyingPreset) return
+        isApplyingPreset = true
+        scope.launch {
+            presetRepository.load(metadata).fold(
+                onSuccess = { preset ->
+                    var applied: PresetApplication.Applied? = null
+                    sessionStore.updateSession(sourceKey) { current ->
+                        val result = PresetApplication.apply(
+                            currentValues = current.paramValues,
+                            targetRawValues = current.rawConfigValues,
+                            presetRawValues = preset.rawValues
+                        )
+                        applied = result
+                        current.copyForEditor(paramValues = result.paramValues)
+                    }
+                    val skipped = applied?.skippedKeys.orEmpty()
+                    val message = if (skipped.isEmpty()) {
+                        "已应用「${metadata.name}」，保存后生效"
+                    } else {
+                        "已应用「${metadata.name}」，当前配置缺少 ${skipped.size} 项，已跳过"
+                    }
+                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                },
+                onFailure = { error ->
+                    Toast.makeText(context, "预设读取失败：${error.message}", Toast.LENGTH_LONG).show()
+                }
+            )
+            isApplyingPreset = false
         }
     }
 
@@ -329,7 +347,10 @@ fun EditorScreen(
                             }
                         } else {
                             item(key = "graphics_presets") {
-                                PresetCard(onApplyPreset = ::applyPreset)
+                                PresetCard(
+                                    isApplying = isApplyingPreset,
+                                    onApplyPreset = ::applyPreset
+                                )
                             }
                         }
 
@@ -505,14 +526,17 @@ private fun EditorSessionState.copyForEditor(
 )
 
 /**
- * 单个参数项
+ * 画质预设卡片：数据来自 20 份内置真实 preferences
  */
 @Composable
 private fun PresetCard(
-    onApplyPreset: (GraphicsPreset) -> Unit
+    isApplying: Boolean,
+    onApplyPreset: (PresetMetadata) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
-    var selectedPreset by remember { mutableStateOf(GraphicsPresets.all.first()) }
+    var selectedPresetId by rememberSaveable { mutableStateOf(PresetCatalog.all.first().id) }
+    val selectedPreset = PresetCatalog.all.firstOrNull { it.id == selectedPresetId }
+        ?: PresetCatalog.all.first()
 
     Card(
         modifier = Modifier
@@ -541,7 +565,7 @@ private fun PresetCard(
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        text = selectedPreset.name,
+                        text = "${selectedPreset.group.title} · ${selectedPreset.name}",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -551,23 +575,32 @@ private fun PresetCard(
                     onDismissRequest = { expanded = false },
                     modifier = Modifier.fillMaxWidth(0.92f)
                 ) {
-                    GraphicsPresets.all.forEach { preset ->
-                        DropdownMenuItem(
-                            text = {
-                                Column {
-                                    Text(text = preset.name, color = TextPrimary)
-                                    Text(
-                                        text = preset.description,
-                                        color = TextSecondary,
-                                        fontSize = 12.sp
-                                    )
-                                }
-                            },
-                            onClick = {
-                                selectedPreset = preset
-                                expanded = false
-                            }
+                    PresetGroup.entries.forEach { group ->
+                        Text(
+                            text = group.title,
+                            color = NeonCyan,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
                         )
+                        PresetCatalog.all.filter { it.group == group }.forEach { preset ->
+                            DropdownMenuItem(
+                                text = {
+                                    Column {
+                                        Text(text = preset.name, color = TextPrimary)
+                                        Text(
+                                            text = preset.description,
+                                            color = TextSecondary,
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    selectedPresetId = preset.id
+                                    expanded = false
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -577,9 +610,15 @@ private fun PresetCard(
                 color = TextSecondary,
                 fontSize = 13.sp
             )
+            Text(
+                text = "数值来自真实 preferences 文件，只修改画质字段及 Graphics/Performance 档位。",
+                color = TextDisabled,
+                fontSize = 12.sp
+            )
             Spacer(modifier = Modifier.height(12.dp))
             Button(
                 onClick = { onApplyPreset(selectedPreset) },
+                enabled = !isApplying,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
@@ -589,10 +628,18 @@ private fun PresetCard(
                 ),
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text(
-                    text = "应用预设",
-                    fontWeight = FontWeight.Bold
-                )
+                if (isApplying) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = DarkBackground,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text(
+                        text = "应用预设",
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }

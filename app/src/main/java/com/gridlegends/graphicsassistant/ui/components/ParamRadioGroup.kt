@@ -51,12 +51,13 @@ fun ParamRadioGroup(
         ) {
             param.options.forEach { (value, label) ->
                 val selected = paramValue.value == value
+                val isExperimental = value in param.experimentalValues
                 FilterChip(
                     selected = selected,
                     onClick = { onValueChange(value) },
                     label = {
                         Text(
-                            text = label,
+                            text = if (isExperimental) "$label·实验" else label,
                             style = MaterialTheme.typography.labelLarge
                         )
                     },
@@ -78,6 +79,22 @@ fun ParamRadioGroup(
         }
 
         Spacer(modifier = Modifier.height(4.dp))
+
+        if (paramValue.value !in param.options) {
+            Text(
+                text = "当前值：${paramValue.value}（非标准值，未在选项中）",
+                style = MaterialTheme.typography.bodyMedium,
+                color = AccentOrangeLight
+            )
+        }
+
+        if (paramValue.value in param.experimentalValues) {
+            Text(
+                text = "极高档未在 20 份真实预设中出现过，部分设备可能不生效或无法进入游戏，保存前请确认已有备份。",
+                style = MaterialTheme.typography.bodyMedium,
+                color = AccentOrange
+            )
+        }
 
         // 参数说明
         Text(
