@@ -31,17 +31,20 @@ class RootManager {
                 append(output)
                 if (error.isNotBlank()) append(error)
             }
-            RootCommandResult(merged, exitCode)
+            RootCommandResult(merged, exitCode, stdout = output)
         } catch (e: Exception) {
             Log.d("GLGraphics", "ROOT exec failed type=${e.javaClass.simpleName}")
-            RootCommandResult(e.message.orEmpty(), -1)
+            RootCommandResult(e.message.orEmpty(), -1, stdout = "")
         }
     }
 }
 
 internal data class RootCommandResult(
+    /** stdout followed by stderr, used for status detection messages. */
     val output: String,
-    val exitCode: Int
+    val exitCode: Int,
+    /** stdout only; file contents must never include su diagnostics written to stderr. */
+    val stdout: String
 )
 
 enum class RootStatus {

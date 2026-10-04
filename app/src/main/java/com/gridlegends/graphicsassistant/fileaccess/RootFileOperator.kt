@@ -17,8 +17,8 @@ class RootFileOperator(
 
     private fun exec(command: String): Pair<String, Int> {
         val result = rootManager.runRootCommand(command)
-        log(safeCommandSummary("ROOT", command, result.output, "", result.exitCode))
-        return result.output to result.exitCode
+        log(safeCommandSummary("ROOT", command, result.stdout, "", result.exitCode))
+        return result.stdout to result.exitCode
     }
 
     fun diagnose(): String {
