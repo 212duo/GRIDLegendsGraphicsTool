@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,11 +37,14 @@ import com.gridlegends.graphicsassistant.fileaccess.RootManager
 import com.gridlegends.graphicsassistant.fileaccess.RootStatus
 import com.gridlegends.graphicsassistant.fileaccess.SafManager
 import com.gridlegends.graphicsassistant.fileaccess.ShizukuFileOperator
-import com.gridlegends.graphicsassistant.fileaccess.logBuffer
+import com.gridlegends.graphicsassistant.fileaccess.OperationLog
 import com.gridlegends.graphicsassistant.fileaccess.safePathResultSummary
 import com.gridlegends.graphicsassistant.fileaccess.ShizukuManager
 import com.gridlegends.graphicsassistant.fileaccess.ShizukuStatus
 import com.gridlegends.graphicsassistant.ui.theme.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * 首页 - 授权引导（支持 Shizuku 和 SAF 两种模式）
@@ -58,7 +62,7 @@ fun HomeScreen(
     val defaultAccessMode = remember {
         if (shizukuManager.shouldUseShizuku()) AccessMode.SHIZUKU else AccessMode.SAF
     }
-    var accessMode by remember { mutableStateOf(defaultAccessMode) }
+    var accessMode by rememberSaveable { mutableStateOf(defaultAccessMode) }
     val useShizuku = accessMode == AccessMode.SHIZUKU
     val useRoot = accessMode == AccessMode.ROOT
 
@@ -71,11 +75,15 @@ fun HomeScreen(
     // SAF 授权状态
     var safAuthorized by remember { mutableStateOf(safManager.isAuthorized()) }
 
-    val shizukuOp = remember { ShizukuFileOperator(context, shizukuManager) }
+    val shizukuOp = remember { ShizukuFileOperator() }
     val rootOp = remember { RootFileOperator(rootManager) }
     // 保存找到的配置文件路径和内容
     var foundConfigPath by remember { mutableStateOf<String?>(null) }
     var foundConfigContent by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    var isCheckingRoot by remember { mutableStateOf(false) }
+    // Bumped after re-authorizing SAF so the config check runs even if the flag did not change.
+    var configCheckToken by remember { mutableIntStateOf(0) }
 
     // Shizuku 状态变化监听
     DisposableEffect(Unit) {
@@ -95,48 +103,39 @@ fun HomeScreen(
     }
 
     // 检查配置文件
-    LaunchedEffect(accessMode, shizukuStatus, rootStatus, safAuthorized) {
+    LaunchedEffect(accessMode, shizukuStatus, rootStatus, safAuthorized, configCheckToken) {
         Log.d("GLGraphics", "HomeScreen: 检查配置 accessMode=$accessMode, shizukuStatus=$shizukuStatus, rootStatus=$rootStatus, safAuthorized=$safAuthorized")
         foundConfigPath = null
         foundConfigContent = null
-        when (accessMode) {
-            AccessMode.ROOT -> if (rootStatus == RootStatus.READY) {
-                val found = rootOp.findConfigFile()
-                Log.d("GLGraphics", safePathResultSummary("ROOT", "home-find", found))
-                foundConfigPath = found
-                if (found != null) {
-                    foundConfigContent = rootOp.readFile(found)
-                    Log.d("GLGraphics", "HomeScreen: root readFile -> ${foundConfigContent?.length ?: "null"} 字符")
-                    configFound = foundConfigContent != null
+        configFound = false
+        val detected = withContext(Dispatchers.IO) {
+            when (accessMode) {
+                AccessMode.ROOT -> if (rootStatus == RootStatus.READY) {
+                    val found = rootOp.findConfigFile()
+                    Log.d("GLGraphics", safePathResultSummary("ROOT", "home-find", found))
+                    DetectedConfig(found, found?.let(rootOp::readFile))
                 } else {
-                    configFound = false
+                    DetectedConfig.NONE
                 }
-            } else {
-                configFound = false
-            }
-            AccessMode.SHIZUKU -> if (shizukuStatus == ShizukuStatus.READY) {
-                val found = shizukuOp.findConfigFile()
-                Log.d("GLGraphics", safePathResultSummary("SHIZUKU", "home-find", found))
-                foundConfigPath = found
-                if (found != null) {
-                    foundConfigContent = shizukuOp.readFile(found)
-                    Log.d("GLGraphics", "HomeScreen: readFile -> ${foundConfigContent?.length ?: "null"} 字符")
-                    configFound = foundConfigContent != null
+                AccessMode.SHIZUKU -> if (shizukuStatus == ShizukuStatus.READY) {
+                    val found = shizukuOp.findConfigFile()
+                    Log.d("GLGraphics", safePathResultSummary("SHIZUKU", "home-find", found))
+                    DetectedConfig(found, found?.let(shizukuOp::readFile))
                 } else {
-                    configFound = false
+                    DetectedConfig.NONE
                 }
-            } else {
-                configFound = false
-            }
-            AccessMode.SAF -> if (safAuthorized) {
-                val configFile = safManager.findConfigFile()
-                foundConfigPath = configFile?.uri?.toString()
-                configFound = configFile != null
-                Log.d("GLGraphics", "HomeScreen: SAF configFound=$configFound")
-            } else {
-                configFound = false
+                AccessMode.SAF -> if (safAuthorized) {
+                    val configFile = safManager.findConfigFile()
+                    DetectedConfig(configFile?.uri?.toString(), content = null, found = configFile != null)
+                } else {
+                    DetectedConfig.NONE
+                }
             }
         }
+        foundConfigPath = detected.path
+        foundConfigContent = detected.content
+        configFound = detected.found
+        Log.d("GLGraphics", "HomeScreen: $accessMode configFound=${detected.found} contentLength=${detected.content?.length ?: 0}")
     }
 
     // SAF 目录选择器
@@ -145,9 +144,12 @@ fun HomeScreen(
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             result.data?.data?.let { uri ->
-                safManager.saveAuthorization(uri)
-                safAuthorized = true
-                configFound = safManager.findConfigFile() != null
+                if (safManager.saveAuthorization(uri)) {
+                    safAuthorized = true
+                    configCheckToken++
+                } else {
+                    Toast.makeText(context, "授权失败，请重新选择游戏目录", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
@@ -227,8 +229,16 @@ fun HomeScreen(
             if (useRoot) {
                 RootStatusCard(
                     status = rootStatus,
+                    isChecking = isCheckingRoot,
                     onCheckRoot = {
-                        rootStatus = rootManager.checkRootAccess()
+                        if (!isCheckingRoot) {
+                            isCheckingRoot = true
+                            scope.launch {
+                                // `su` blocks until the user answers the root manager prompt.
+                                rootStatus = withContext(Dispatchers.IO) { rootManager.checkRootAccess() }
+                                isCheckingRoot = false
+                            }
+                        }
                     }
                 )
 
@@ -246,10 +256,15 @@ fun HomeScreen(
                         var diagText by remember { mutableStateOf("") }
                         OutlinedButton(
                             onClick = {
-                                diagText = try {
-                                    rootOp.diagnose()
-                                } catch (e: Exception) {
-                                    "诊断失败: ${e.message}"
+                                diagText = "正在扫描..."
+                                scope.launch {
+                                    diagText = withContext(Dispatchers.IO) {
+                                        try {
+                                            rootOp.diagnose()
+                                        } catch (e: Exception) {
+                                            "诊断失败: ${e.message}"
+                                        }
+                                    }
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
@@ -356,14 +371,19 @@ fun HomeScreen(
 
                         OutlinedButton(
                             onClick = {
-                                isDiagLoading = true
-                                diagText = "正在扫描..."
-                                try {
-                                    diagText = shizukuOp.diagnose()
-                                } catch (e: Exception) {
-                                    diagText = "诊断失败: ${e.message}"
-                                } finally {
-                                    isDiagLoading = false
+                                if (!isDiagLoading) {
+                                    isDiagLoading = true
+                                    diagText = "正在扫描..."
+                                    scope.launch {
+                                        diagText = withContext(Dispatchers.IO) {
+                                            try {
+                                                shizukuOp.diagnose()
+                                            } catch (e: Exception) {
+                                                "诊断失败: ${e.message}"
+                                            }
+                                        }
+                                        isDiagLoading = false
+                                    }
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
@@ -405,9 +425,10 @@ fun HomeScreen(
                             ),
                             shape = RoundedCornerShape(8.dp)
                         ) {
-                            Text(text = if (showLogs) "隐藏日志" else "查看运行日志 (${logBuffer.size}条)", fontSize = 14.sp)
+                            Text(text = if (showLogs) "隐藏日志" else "查看运行日志 (${OperationLog.snapshot().size}条)", fontSize = 14.sp)
                         }
-                        if (showLogs && logBuffer.isNotEmpty()) {
+                        val logs = OperationLog.snapshot()
+                        if (showLogs && logs.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(8.dp))
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
@@ -417,7 +438,7 @@ fun HomeScreen(
                                 shape = RoundedCornerShape(8.dp)
                             ) {
                                 Text(
-                                    text = logBuffer.joinToString("\n"),
+                                    text = logs.joinToString("\n"),
                                     fontSize = 10.sp,
                                     color = TextSecondary,
                                     modifier = Modifier.padding(12.dp),
@@ -616,7 +637,7 @@ fun HomeScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Android 14/15 如果提示“无法使用此文件夹”，请返回后使用 Shizuku 方式访问。",
+                        text = "Android 13 及以上如果提示“无法使用此文件夹”，请返回后改用 Shizuku 或 Root 方式访问。",
                         fontSize = 12.sp,
                         color = TextSecondary,
                         textAlign = TextAlign.Center
@@ -671,6 +692,7 @@ fun HomeScreen(
 @Composable
 private fun RootStatusCard(
     status: RootStatus,
+    isChecking: Boolean,
     onCheckRoot: () -> Unit
 ) {
     Card(
@@ -719,6 +741,7 @@ private fun RootStatusCard(
                 Spacer(modifier = Modifier.height(12.dp))
                 Button(
                     onClick = onCheckRoot,
+                    enabled = !isChecking,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = NeonCyan,
@@ -726,7 +749,7 @@ private fun RootStatusCard(
                     ),
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text(text = "检测并授权 Root", fontWeight = FontWeight.Bold)
+                    Text(text = if (isChecking) "检测中，请在授权弹窗中允许…" else "检测并授权 Root", fontWeight = FontWeight.Bold)
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
@@ -864,5 +887,15 @@ private fun StatusCard(
                 )
             }
         }
+    }
+}
+
+private data class DetectedConfig(
+    val path: String?,
+    val content: String?,
+    val found: Boolean = content != null
+) {
+    companion object {
+        val NONE = DetectedConfig(path = null, content = null, found = false)
     }
 }

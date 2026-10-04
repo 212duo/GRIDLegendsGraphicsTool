@@ -1,0 +1,2 @@
+# Bundled presets must stay byte-identical to the original game files.
+app/src/main/assets/presets/** -text

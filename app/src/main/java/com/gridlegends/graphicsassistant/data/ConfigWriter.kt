@@ -9,77 +9,114 @@ object ConfigWriter {
         paramValues: List<ParamValue>,
         existingContent: String? = null
     ) {
-        val valuesToWrite = synchronizeGraphicsProfileValues(paramValues)
-        if (existingContent != null) {
-            var content: String = existingContent
-            for (param in valuesToWrite) {
-                content = replaceParam(content, param.key, param.value)
-            }
-            output.write(content.toByteArray(Charsets.UTF_8))
-        } else {
-            output.write(generateFreshConfig(valuesToWrite).toByteArray(Charsets.UTF_8))
-        }
+        output.write(render(paramValues, existingContent).toByteArray(Charsets.UTF_8))
         output.flush()
     }
+
+    /**
+     * Renders the rewritten file and re-parses it, failing when any value that differs from
+     * [existingContent] did not land. Nothing should be written to disk when this fails.
+     */
+    fun renderVerified(
+        existingContent: String,
+        paramValues: List<ParamValue>
+    ): Result<String> = runCatching {
+        val changed = changedValues(paramValues, parseOrNull(existingContent))
+        val rendered = render(paramValues, existingContent)
+        val reparsed = ConfigParser.parse(rendered.byteInputStream())
+        val failedKeys = changed.filter { reparsed[it.key] != it.value }.map { it.key }
+        check(failedKeys.isEmpty()) {
+            "以下字段未成功写入：${failedKeys.joinToString()}"
+        }
+        rendered
+    }
+
+    private fun render(paramValues: List<ParamValue>, existingContent: String?): String {
+        val explicitKeys = paramValues.mapTo(mutableSetOf()) { it.key }
+        if (existingContent == null) {
+            return generateFreshConfig(synchronizeGraphicsProfileValues(paramValues, explicitKeys))
+        }
+
+        // Only touch values that actually differ from the file, so an edit to one option never
+        // rewrites unrelated fields or profile blocks.
+        val existingValues = parseOrNull(existingContent)
+        val changed = changedValues(paramValues, existingValues)
+        val valuesToWrite = changedValues(
+            synchronizeGraphicsProfileValues(changed, explicitKeys),
+            existingValues
+        )
+
+        var content: String = existingContent
+        for (param in valuesToWrite) {
+            content = replaceParam(content, param.key, param.value)
+        }
+        return content
+    }
+
+    private fun parseOrNull(content: String): Map<String, String>? =
+        runCatching { ConfigParser.parse(content.byteInputStream()) }.getOrNull()
+
+    private fun changedValues(
+        values: List<ParamValue>,
+        existingValues: Map<String, String>?
+    ): List<ParamValue> =
+        if (existingValues == null) values else values.filter { existingValues[it.key] != it.value }
 
     /**
      * GRID Legends keeps a current value and a value for the Graphics preset.
      * When a user edits a current value directly, mirror it to the Graphics
      * block unless a preset explicitly supplied that profile value.
      */
-    private fun synchronizeGraphicsProfileValues(paramValues: List<ParamValue>): List<ParamValue> {
-        val byKey = paramValues.associateBy { it.key }.toMutableMap()
+    private fun synchronizeGraphicsProfileValues(
+        paramValues: List<ParamValue>,
+        explicitKeys: Set<String>
+    ): List<ParamValue> {
         val result = paramValues.toMutableList()
 
-        graphicsProfileKeys.forEach { currentKey ->
-            val current = byKey[currentKey] ?: return@forEach
-            val profileKey = "Graphics/$currentKey"
-            if (byKey.containsKey(profileKey)) return@forEach
+        paramValues.filter { it.key in graphicsProfileKeys }.forEach { current ->
+            val profileKey = "Graphics/${current.key}"
+            if (profileKey in explicitKeys) return@forEach
 
-            val profileValue = if (currentKey in integerGraphicsProfileKeys) {
+            val profileValue = if (current.key in integerGraphicsProfileKeys) {
                 current.value
             } else {
                 "${current.value}, 0, 0"
             }
-            val generated = ParamValue(
+            result += ParamValue(
                 key = profileKey,
                 value = profileValue,
                 originalValue = profileValue,
                 isModified = current.isModified
             )
-            byKey[profileKey] = generated
-            result += generated
         }
         return result
     }
 
     private fun replaceParam(content: String, key: String, value: String): String {
         val location = ValueLocation.fromKey(key)
-        val replaced = replaceValueInBlock(
+        replaceValueInBlock(
             content = content,
             blockName = location.blockName,
             valueName = location.valueName,
             newValue = value
-        )
-        if (replaced != content) return replaced
+        )?.let { return it }
 
         return replaceLegacyFormats(content, key, location, value)
     }
 
+    /** Returns null when the block has no such value, even if the new value equals the old one. */
     private fun replaceValueInBlock(
         content: String,
         blockName: String,
         valueName: String,
         newValue: String
-    ): String {
+    ): String? {
         val pattern = Regex(
-            pattern = """(<key\s+name="${Regex.escape(blockName)}">\s*(?:(?!<key\s+name=).)*?<value\s+name="${Regex.escape(valueName)}"\s+type="[^"]*">)[^<]*(</value>)""",
+            pattern = """<key\s+name="${Regex.escape(blockName)}"\s*>(?:(?!<key\s+name=|</key>).)*?<value\s+name="${Regex.escape(valueName)}"\s+type="[^"]*">([^<]*)</value>""",
             options = setOf(RegexOption.DOT_MATCHES_ALL)
         )
-        return pattern.replaceFirst(
-            content,
-            "$1${Regex.escapeReplacement(newValue)}$2"
-        )
+        val valueRange = pattern.find(content)?.groups?.get(1)?.range ?: return null
+        return content.replaceRange(valueRange, newValue)
     }
 
     private fun replaceLegacyFormats(
@@ -105,6 +142,10 @@ object ConfigWriter {
                 newValue = newValue
             )
         }
+
+        // In the game's registry format a value missing from GraphicsSettings must not be
+        // "found" in BatterySaver, BenchmarkSetup or another block further down the file.
+        if (registryGraphicsBlock.containsMatchIn(content)) return content
 
         val valuePattern = Regex(
             """(<value\s+name="${Regex.escape(location.valueName)}"\s+type="[^"]*">)[^<]*(</value>)"""
@@ -235,9 +276,7 @@ object ConfigWriter {
 
     private val integerGraphicsProfileKeys = setOf("FramerateLimit", "FireworksAndConfetti")
 
-    fun backupFileName(): String {
-        return "preferences_backup_${System.currentTimeMillis()}"
-    }
+    private val registryGraphicsBlock = Regex("""<key\s+name="GraphicsSettings"\s*>""")
 
     private data class ValueLocation(
         val blockName: String,

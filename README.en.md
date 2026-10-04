@@ -14,7 +14,7 @@ The app provides two distinct workflows: create and export a `preferences` file 
 - Provides manual editing for frame rate, resolution, quality, reflections, post-processing, HDR, SSR, and volumetrics.
 - Adds nine adjustable options: ambient occlusion, lighting quality, mirrors, particle effects, tyre marks, weather effects, render scale, vertical sync, and reduced rain.
 - On Android, the app does not actively modify MetalFX, avoiding writes to a graphics option that does not apply to the platform.
-- Includes 20 real configurations across Low, Medium, High, and Extreme groups for creating and exporting graphics files.
+- Includes 20 real configurations across Low, Medium, High, and Extreme groups for creating and exporting graphics files; Apply Preset in the direct editor uses the same real files.
 - Exports the complete, extensionless `preferences` file from bundled presets without game-directory permission, retaining the other settings in the preset file.
 - Supports Root, Shizuku, and SAF access modes for directly editing the configuration in the game directory.
 - Android 11-15 uses SAF folder authorization by default; if the system picker blocks `Android/data`, you can switch to Shizuku or Root.
@@ -50,13 +50,14 @@ The export is a complete `preferences` file and retains the other settings in th
 1. Install and launch GRID Legends at least once so the game creates the config file.
 2. Open this tool and grant folder, Shizuku, or Root access.
 3. Enter the graphics editor.
-4. Adjust parameters manually, or select a preset and tap Apply Preset.
+4. Adjust parameters manually, or pick one of the 20 real presets and tap Apply Preset.
 5. Save changes and restart the game. This workflow directly edits the `preferences` file in the game directory.
+6. To roll back, tap Restore Backup in the editor toolbar and choose one of the automatic backups.
 
 ## Access Modes
 
 - Root: if the device uses Magisk, KernelSU, APatch, or a similar root solution, choose Root access on the home screen.
-- Android 11-15: use the system file picker by default; if it shows "Can't use this folder", switch to Shizuku or Root on the home screen.
+- Android 11-15: use the system file picker by default. Android 13 and later often block this folder; if it shows "Can't use this folder", switch to Shizuku or Root on the home screen.
 - Android 16 and above: use Shizuku by default to access the game directory.
 
 If a ROM blocks `Android/data` selection through SAF, authorization may fail. In that case, Shizuku or Root can be used as an alternative.
@@ -75,7 +76,10 @@ Release build configuration is in `app/build.gradle.kts`.
 ## Notes
 
 - Extreme and HDR presets are demanding; lower-end devices may not run the game reliably.
-- The direct-edit workflow creates a backup before saving.
+- The direct-edit workflow creates a backup before saving, keeps the latest 5, and can restore them from the editor.
+- Saving only writes fields that actually changed and verifies the result before replacing the file.
+- The "Ultra" level (4) does not appear in any real preset, so it is marked as experimental.
+- The game writes its own settings on exit. Root/Shizuku saves detect a running game and can close it first; with SAF, close the game from Recents before saving.
 - Close the game and back up the original file before manually replacing an exported `preferences` file.
 - The app preserves unmanaged XML values when writing changes.
 - This is an unofficial open-source tool and is not affiliated with or endorsed by Codemasters, EA, or Feral Interactive.

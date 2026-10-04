@@ -76,7 +76,7 @@ fun ParamSlider(
                 updateValue(newValue)
             },
             valueRange = param.minValue..param.maxValue,
-            steps = ((param.maxValue - param.minValue) / param.step - 1).toInt().coerceAtLeast(0),
+            steps = sliderSteps(param),
             colors = SliderDefaults.colors(
                 thumbColor = NeonCyan,
                 activeTrackColor = NeonCyan,
@@ -134,3 +134,14 @@ fun ParamSlider(
         )
     }
 }
+
+/**
+ * Material3 draws a tick for every step; ranges such as 360–2160 px would render ~1800 ticks.
+ * Large ranges slide continuously instead, and [ParamSlider] still snaps to [GraphicsParam.step].
+ */
+private fun sliderSteps(param: GraphicsParam): Int {
+    val steps = ((param.maxValue - param.minValue) / param.step - 1).toInt().coerceAtLeast(0)
+    return if (steps > MAX_SLIDER_TICKS) 0 else steps
+}
+
+private const val MAX_SLIDER_TICKS = 100

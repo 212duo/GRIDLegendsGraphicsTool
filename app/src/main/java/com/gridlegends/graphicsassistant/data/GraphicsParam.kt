@@ -19,7 +19,9 @@ data class GraphicsParam(
     val maxValue: Float = 100f,
     val step: Float = 1f,
     val unitSuffix: String = "",
-    val options: Map<String, String> = emptyMap()
+    val options: Map<String, String> = emptyMap(),
+    /** Option values never seen in the bundled real presets; shown with a risk warning. */
+    val experimentalValues: Set<String> = emptySet()
 )
 
 enum class ParamSection(val title: String, val icon: String) {

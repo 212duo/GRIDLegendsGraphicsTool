@@ -12,8 +12,8 @@ android {
         applicationId = "com.gridlegends.graphicsassistant"
         minSdk = 30
         targetSdk = 35
-        versionCode = 9
-        versionName = "1.4.0"
+        versionCode = 10
+        versionName = "1.5.0"
 
         vectorDrawables {
             useSupportLibrary = true
@@ -55,7 +55,6 @@ android {
 
     buildFeatures {
         compose = true
-        aidl = true
     }
 
     packaging {

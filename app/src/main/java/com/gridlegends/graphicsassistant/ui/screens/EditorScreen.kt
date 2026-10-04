@@ -14,9 +14,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Save
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -28,14 +29,24 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gridlegends.graphicsassistant.data.*
 import com.gridlegends.graphicsassistant.fileaccess.AccessMode
+import com.gridlegends.graphicsassistant.fileaccess.ConfigBackups
+import com.gridlegends.graphicsassistant.fileaccess.ConfigFileGateway
 import com.gridlegends.graphicsassistant.fileaccess.FileOperator
+import com.gridlegends.graphicsassistant.fileaccess.LiveConfigSaver
 import com.gridlegends.graphicsassistant.fileaccess.RootFileOperator
 import com.gridlegends.graphicsassistant.fileaccess.RootManager
 import com.gridlegends.graphicsassistant.fileaccess.SafManager
+import com.gridlegends.graphicsassistant.fileaccess.SaveOutcome
 import com.gridlegends.graphicsassistant.fileaccess.ShizukuFileOperator
-import com.gridlegends.graphicsassistant.fileaccess.ShizukuManager
 import com.gridlegends.graphicsassistant.ui.components.*
 import com.gridlegends.graphicsassistant.ui.theme.*
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * 画质编辑主界面（支持 Root、Shizuku 和 SAF 三种模式）
@@ -50,19 +61,44 @@ fun EditorScreen(
     onBack: () -> Unit,
     onAbout: () -> Unit
 ) {
-    val shizukuManager = remember { ShizukuManager(context) }
-    val rootManager = remember { RootManager() }
-    val safManager = remember { SafManager(context) }
-
-    val shizukuOp = remember { ShizukuFileOperator(context, shizukuManager) }
-    val rootOp = remember { RootFileOperator(rootManager) }
-    val safOp = remember { FileOperator(context, safManager) }
+    val shizukuOp = remember { ShizukuFileOperator() }
+    val rootOp = remember { RootFileOperator(RootManager()) }
+    val safOp = remember { FileOperator(context, SafManager(context)) }
 
     val sourceKey = source.sessionKey()
+    val scope = rememberCoroutineScope()
+    val presetRepository = remember { PresetRepository(context.applicationContext) }
     var isSaving by remember { mutableStateOf(false) }
+    var isApplyingPreset by remember { mutableStateOf(false) }
     val bundledPreset = (source as? EditorSource.BundledPreset)?.preset
+    val liveSource = source as? EditorSource.LiveConfig
     var showDiscardDialog by rememberSaveable { mutableStateOf(false) }
     var showInstallDialog by rememberSaveable { mutableStateOf(false) }
+    var backupNames by remember { mutableStateOf<List<String>?>(null) }
+    var restoreCandidate by rememberSaveable { mutableStateOf<String?>(null) }
+    var gameRunningGateway by remember { mutableStateOf<ConfigFileGateway?>(null) }
+
+    fun toast(message: String, long: Boolean = false) {
+        Toast.makeText(context, message, if (long) Toast.LENGTH_LONG else Toast.LENGTH_SHORT).show()
+    }
+
+    /** Blocking: resolves the live config for this source's access mode. */
+    fun resolveGateway(live: EditorSource.LiveConfig): ConfigFileGateway? = when (live.accessMode) {
+        AccessMode.ROOT -> (live.configPath ?: rootOp.findConfigFile())?.let(rootOp::gateway)
+        AccessMode.SHIZUKU -> (live.configPath ?: shizukuOp.findConfigFile())?.let(shizukuOp::gateway)
+        AccessMode.SAF -> safOp.gateway()
+    }
+
+    fun initializedSession(rawValues: Map<String, String>): EditorSessionState {
+        val parsedValues = ConfigParser.toParamValues(rawValues).associateBy { it.key }
+        return EditorSessionState(
+            sourceKey = sourceKey,
+            rawConfigValues = rawValues,
+            paramValues = parsedValues,
+            isInitialized = true,
+            lastExportedSnapshot = parsedValues.mapValues { it.value.value }
+        )
+    }
 
     val paramValues = session.paramValues
     val isLoading = !session.isInitialized && session.loadError == null
@@ -102,35 +138,22 @@ fun EditorScreen(
         if (currentSession.isInitialized || currentSession.loadError != null) return@LaunchedEffect
         Log.d("GLGraphics", "EditorScreen: 开始加载 ${source.logSummary()}")
         try {
-            val rawValues = when (val currentSource = source) {
-                is EditorSource.BundledPreset -> currentSource.preset.rawValues
-                is EditorSource.LiveConfig -> if (currentSource.configContent != null) {
-                    Log.d(
-                        "GLGraphics",
-                        "EditorScreen: 使用传入的 configContent (${currentSource.configContent.length} 字符)"
-                    )
-                    ConfigParser.parse(currentSource.configContent.byteInputStream())
-                } else {
-                    when (currentSource.accessMode) {
-                        AccessMode.ROOT -> currentSource.configPath?.let(rootOp::readConfigFromPath)
-                            ?: rootOp.readConfig()
-                        AccessMode.SHIZUKU -> currentSource.configPath?.let(shizukuOp::readConfigFromPath)
-                            ?: shizukuOp.readConfig()
-                        AccessMode.SAF -> safOp.readConfig()
+            val rawValues = withContext(Dispatchers.IO) {
+                when (val currentSource = source) {
+                    is EditorSource.BundledPreset -> currentSource.preset.rawValues
+                    is EditorSource.LiveConfig -> {
+                        val content = currentSource.configContent
+                            ?: resolveGateway(currentSource)?.read()
+                            ?: error("未找到配置文件")
+                        ConfigParser.parse(content.byteInputStream())
                     }
-                } ?: error("未找到配置文件")
+                }
             }
-            val parsedValues = ConfigParser.toParamValues(rawValues).associateBy { it.key }
-            sessionStore.updateSession(sourceKey) {
-                EditorSessionState(
-                    sourceKey = sourceKey,
-                    rawConfigValues = rawValues,
-                    paramValues = parsedValues,
-                    isInitialized = true,
-                    lastExportedSnapshot = parsedValues.mapValues { it.value.value }
-                )
-            }
-            Log.d("GLGraphics", "EditorScreen: 解析到 ${parsedValues.size} 个画质参数")
+            val loadedSession = initializedSession(rawValues)
+            sessionStore.updateSession(sourceKey) { loadedSession }
+            Log.d("GLGraphics", "EditorScreen: 解析到 ${loadedSession.paramValues.size} 个画质参数")
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             sessionStore.updateSession(sourceKey) {
                 it.copyForEditor(loadError = "读取配置失败：${e.message}")
@@ -149,96 +172,156 @@ fun EditorScreen(
         if (hasUnexportedChanges) showDiscardDialog = true else onBack()
     }
 
-    fun applyPreset(preset: GraphicsPreset) {
-        sessionStore.updateSession(sourceKey) { current ->
-            val next = current.paramValues.toMutableMap()
-            preset.values.forEach { (key, value) ->
-                val originalValue = next[key]?.originalValue
-                    ?: current.rawConfigValues[key]
-                    ?: value
-                next[key] = ParamValue(
-                    key = key,
-                    value = value,
-                    originalValue = originalValue,
-                    isModified = value != originalValue
-                )
-            }
-            current.copyForEditor(paramValues = next)
+    fun applyPreset(metadata: PresetMetadata) {
+        if (isApplyingPreset) return
+        isApplyingPreset = true
+        scope.launch {
+            presetRepository.load(metadata).fold(
+                onSuccess = { preset ->
+                    var applied: PresetApplication.Applied? = null
+                    sessionStore.updateSession(sourceKey) { current ->
+                        val result = PresetApplication.apply(
+                            currentValues = current.paramValues,
+                            targetRawValues = current.rawConfigValues,
+                            presetRawValues = preset.rawValues
+                        )
+                        applied = result
+                        current.copyForEditor(paramValues = result.paramValues)
+                    }
+                    val skipped = applied?.skippedKeys.orEmpty()
+                    val message = if (skipped.isEmpty()) {
+                        "已应用「${metadata.name}」，保存后生效"
+                    } else {
+                        "已应用「${metadata.name}」，当前配置缺少 ${skipped.size} 项，已跳过"
+                    }
+                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                },
+                onFailure = { error ->
+                    Toast.makeText(context, "预设读取失败：${error.message}", Toast.LENGTH_LONG).show()
+                }
+            )
+            isApplyingPreset = false
         }
     }
 
-    fun saveLiveConfig(liveSource: EditorSource.LiveConfig) {
+    suspend fun performSave(gateway: ConfigFileGateway, stopGameFirst: Boolean) {
         isSaving = true
-        try {
-            val success = when (liveSource.accessMode) {
-                AccessMode.ROOT -> liveSource.configPath?.let {
-                    rootOp.writeConfigToPath(it, paramValues)
-                } ?: rootOp.writeConfig(paramValues)
-                AccessMode.SHIZUKU -> liveSource.configPath?.let {
-                    shizukuOp.writeConfigToPath(it, paramValues)
-                } ?: shizukuOp.writeConfig(paramValues)
-                AccessMode.SAF -> safOp.writeConfig(paramValues)
+        val values = sessionStore.currentSession(sourceKey)?.paramValues?.values?.toList()
+        val outcome = if (values == null) {
+            SaveOutcome.Failed("编辑状态已丢失，请重新进入编辑")
+        } else {
+            withContext(Dispatchers.IO) {
+                if (stopGameFirst && !gateway.stopGame()) {
+                    SaveOutcome.Failed("关闭游戏失败，未保存")
+                } else {
+                    LiveConfigSaver.save(gateway, values)
+                }
             }
-            if (success) {
+        }
+        when (outcome) {
+            is SaveOutcome.Saved -> {
+                val savedRawValues = ConfigParser.parse(outcome.content.byteInputStream())
                 sessionStore.updateSession(sourceKey) { current ->
                     current.copyForEditor(
+                        rawConfigValues = savedRawValues,
                         paramValues = current.paramValues.mapValues { (_, value) ->
                             value.copy(originalValue = value.value, isModified = false)
                         }
                     )
                 }
-                Toast.makeText(
-                    context,
-                    "保存成功！请重启游戏使设置生效",
-                    Toast.LENGTH_LONG
-                ).show()
-            } else {
-                Toast.makeText(context, "保存失败，请检查权限", Toast.LENGTH_SHORT).show()
+                toast("保存成功，已自动备份原配置。下次启动游戏生效", long = true)
             }
-        } catch (e: Exception) {
-            Toast.makeText(context, "保存失败：${e.message}", Toast.LENGTH_SHORT).show()
-        } finally {
+            is SaveOutcome.Failed -> toast("保存失败：${outcome.message}", long = true)
+        }
+        isSaving = false
+    }
+
+    fun saveLiveConfig(live: EditorSource.LiveConfig) {
+        if (isSaving) return
+        isSaving = true
+        scope.launch {
+            val gateway = withContext(Dispatchers.IO) { resolveGateway(live) }
+            if (gateway == null) {
+                toast("未找到配置文件，请返回首页重新检测", long = true)
+                isSaving = false
+                return@launch
+            }
+            if (withContext(Dispatchers.IO) { gateway.isGameRunning() } == true) {
+                gameRunningGateway = gateway
+                isSaving = false
+                return@launch
+            }
+            performSave(gateway, stopGameFirst = false)
+        }
+    }
+
+    fun openBackupList(live: EditorSource.LiveConfig) {
+        scope.launch {
+            val names = withContext(Dispatchers.IO) {
+                resolveGateway(live)?.listBackups()?.let(ConfigBackups::newestFirst)
+            }
+            when {
+                names == null -> toast("无法读取备份列表，请检查权限")
+                names.isEmpty() -> toast("暂无备份。每次保存前都会自动备份原配置")
+                else -> backupNames = names
+            }
+        }
+    }
+
+    fun restoreBackup(live: EditorSource.LiveConfig, backupName: String) {
+        if (isSaving) return
+        isSaving = true
+        scope.launch {
+            val outcome = withContext(Dispatchers.IO) {
+                resolveGateway(live)?.let { LiveConfigSaver.restore(it, backupName) }
+                    ?: SaveOutcome.Failed("未找到配置文件")
+            }
+            when (outcome) {
+                is SaveOutcome.Saved -> {
+                    val restoredSession = initializedSession(
+                        ConfigParser.parse(outcome.content.byteInputStream())
+                    )
+                    sessionStore.updateSession(sourceKey) { restoredSession }
+                    toast("已恢复备份，恢复前的配置也已备份")
+                }
+                is SaveOutcome.Failed -> toast("恢复失败：${outcome.message}", long = true)
+            }
+            isSaving = false
+        }
+    }
+
+    fun exportPreset(preset: LoadedPreset) {
+        if (isSaving) return
+        val exportParamValues = sessionStore.currentSession(sourceKey)?.paramValues
+        if (exportParamValues == null) {
+            toast("导出状态已丢失，请重新导出", long = true)
+            return
+        }
+        isSaving = true
+        scope.launch {
+            val exportSnapshot = exportParamValues.mapValues { it.value.value }
+            withContext(Dispatchers.Default) {
+                ConfigExporter.build(preset, exportParamValues)
+            }.fold(
+                onSuccess = { bytes ->
+                    val pendingSession = sessionStore.updateSession(sourceKey) { current ->
+                        current.beginExport(bytes, exportSnapshot)
+                    }
+                    if (pendingSession == null) {
+                        toast("导出状态已丢失，请重新导出", long = true)
+                    } else {
+                        exportLauncher.launch("preferences")
+                    }
+                },
+                onFailure = { error -> toast("导出内容校验失败：${error.message}", long = true) }
+            )
             isSaving = false
         }
     }
 
     fun runBottomAction() {
         when (source) {
-            is EditorSource.BundledPreset -> {
-                isSaving = true
-                val exportSession = sessionStore.currentSession(sourceKey)
-                val exportParamValues = exportSession?.paramValues
-                if (exportParamValues == null) {
-                    Toast.makeText(context, "导出状态已丢失，请重新导出", Toast.LENGTH_LONG).show()
-                    isSaving = false
-                    return
-                }
-                val exportSnapshot = exportParamValues.mapValues { it.value.value }
-                ConfigExporter.build(source.preset, exportParamValues).fold(
-                    onSuccess = { bytes ->
-                        val pendingSession = sessionStore.updateSession(sourceKey) { current ->
-                            current.beginExport(bytes, exportSnapshot)
-                        }
-                        if (pendingSession == null) {
-                            Toast.makeText(
-                                context,
-                                "导出状态已丢失，请重新导出",
-                                Toast.LENGTH_LONG
-                            ).show()
-                        } else {
-                            exportLauncher.launch("preferences")
-                        }
-                    },
-                    onFailure = { error ->
-                        Toast.makeText(
-                            context,
-                            "导出内容校验失败：${error.message}",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
-                )
-                isSaving = false
-            }
+            is EditorSource.BundledPreset -> exportPreset(source.preset)
             is EditorSource.LiveConfig -> saveLiveConfig(source)
         }
     }
@@ -269,7 +352,6 @@ fun EditorScreen(
                     }
                 },
                 actions = {
-                    // 恢复默认按钮
                     IconButton(
                         onClick = {
                             sessionStore.updateSession(sourceKey) { current ->
@@ -279,13 +361,26 @@ fun EditorScreen(
                                     }
                                 )
                             }
-                        }
+                        },
+                        enabled = hasModifications && !isSaving
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "恢复默认",
+                            imageVector = Icons.AutoMirrored.Filled.Undo,
+                            contentDescription = "撤销未保存修改",
                             tint = TextSecondary
                         )
+                    }
+                    if (liveSource != null) {
+                        IconButton(
+                            onClick = { openBackupList(liveSource) },
+                            enabled = !isSaving && !isLoading
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.History,
+                                contentDescription = "恢复备份",
+                                tint = TextSecondary
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -329,7 +424,10 @@ fun EditorScreen(
                             }
                         } else {
                             item(key = "graphics_presets") {
-                                PresetCard(onApplyPreset = ::applyPreset)
+                                PresetCard(
+                                    isApplying = isApplyingPreset,
+                                    onApplyPreset = ::applyPreset
+                                )
                             }
                         }
 
@@ -370,6 +468,9 @@ fun EditorScreen(
                                                         }
                                                     }
                                                 )
+                                                if (param.key == FRAME_SIZE_MAX_KEY) {
+                                                    DynamicResolutionRangeHint(paramValues)
+                                                }
                                             }
                                         }
                                     }
@@ -415,41 +516,126 @@ fun EditorScreen(
                 color = DarkSurface,
                 shadowElevation = 8.dp
             ) {
-                Button(
-                    onClick = ::runBottomAction,
-                    enabled = !isSaving,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                        .height(52.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = AccentOrange,
-                        contentColor = Color.White
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    if (isSaving) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            color = Color.White,
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Save,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (bundledPreset != null) "导出 preferences" else "保存设置",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                Column {
+                  if (liveSource?.accessMode == AccessMode.SAF) {
+                      // SAF cannot detect whether the game is still running in the background.
+                      Text(
+                          text = "保存前请从最近任务中彻底关闭游戏，否则游戏退出时可能覆盖本次修改",
+                          color = TextSecondary,
+                          fontSize = 12.sp,
+                          modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp)
+                      )
+                  }
+                  Button(
+                      onClick = ::runBottomAction,
+                      enabled = !isSaving,
+                      modifier = Modifier
+                          .fillMaxWidth()
+                          .padding(16.dp)
+                          .height(52.dp),
+                      colors = ButtonDefaults.buttonColors(
+                          containerColor = AccentOrange,
+                          contentColor = Color.White
+                      ),
+                      shape = RoundedCornerShape(12.dp)
+                  ) {
+                      if (isSaving) {
+                          CircularProgressIndicator(
+                              modifier = Modifier.size(20.dp),
+                              color = Color.White,
+                              strokeWidth = 2.dp
+                          )
+                      } else {
+                          Icon(
+                              imageVector = Icons.Default.Save,
+                              contentDescription = null,
+                              modifier = Modifier.size(20.dp)
+                          )
+                          Spacer(modifier = Modifier.width(8.dp))
+                          Text(
+                              text = if (bundledPreset != null) "导出 preferences" else "保存设置",
+                              fontSize = 16.sp,
+                              fontWeight = FontWeight.Bold
+                          )
+                      }
+                  }
                 }
             }
         }
+    }
+
+    gameRunningGateway?.let { gateway ->
+        AlertDialog(
+            onDismissRequest = { gameRunningGateway = null },
+            title = { Text("游戏正在运行") },
+            text = { Text("游戏退出时会写回自己的配置，可能覆盖本次修改。建议先关闭游戏再保存。") },
+            confirmButton = {
+                TextButton(onClick = {
+                    gameRunningGateway = null
+                    scope.launch { performSave(gateway, stopGameFirst = true) }
+                }) { Text("关闭游戏并保存") }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = { gameRunningGateway = null }) { Text("取消") }
+                    TextButton(onClick = {
+                        gameRunningGateway = null
+                        scope.launch { performSave(gateway, stopGameFirst = false) }
+                    }) { Text("仍然保存") }
+                }
+            }
+        )
+    }
+
+    backupNames?.let { names ->
+        AlertDialog(
+            onDismissRequest = { backupNames = null },
+            title = { Text("恢复备份") },
+            text = {
+                Column {
+                    Text(
+                        text = "每次保存前都会自动备份，保留最近 ${ConfigBackups.KEEP_COUNT} 份。",
+                        color = TextSecondary,
+                        fontSize = 13.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    names.forEach { name ->
+                        TextButton(
+                            onClick = {
+                                backupNames = null
+                                restoreCandidate = name
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(text = backupLabel(name), modifier = Modifier.fillMaxWidth())
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { backupNames = null }) { Text("关闭") }
+            }
+        )
+    }
+
+    val pendingRestore = restoreCandidate
+    if (pendingRestore != null && liveSource != null) {
+        AlertDialog(
+            onDismissRequest = { restoreCandidate = null },
+            title = { Text("恢复到这份备份？") },
+            text = {
+                Text("将恢复 ${backupLabel(pendingRestore)} 的配置，未保存的修改会丢失。恢复前的当前配置会再备份一份。")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    restoreCandidate = null
+                    restoreBackup(liveSource, pendingRestore)
+                }) { Text("恢复") }
+            },
+            dismissButton = {
+                TextButton(onClick = { restoreCandidate = null }) { Text("取消") }
+            }
+        )
     }
 
     if (showDiscardDialog) {
@@ -487,6 +673,28 @@ fun EditorScreen(
     }
 }
 
+private const val FRAME_SIZE_MIN_KEY = "Graphics/FrameSizeMinimumPercentage"
+private const val FRAME_SIZE_MAX_KEY = "Graphics/FrameSizeMaximumPercentage"
+
+/** Informational only: several bundled real presets intentionally use min > max. */
+@Composable
+private fun DynamicResolutionRangeHint(paramValues: Map<String, ParamValue>) {
+    val min = paramValues[FRAME_SIZE_MIN_KEY]?.value?.toIntOrNull() ?: return
+    val max = paramValues[FRAME_SIZE_MAX_KEY]?.value?.toIntOrNull() ?: return
+    if (min <= max) return
+    Text(
+        text = "动态分辨率下限（$min%）高于上限（$max%）。部分真实预设也采用这种组合，效果以游戏实际表现为准。",
+        color = AccentOrangeLight,
+        fontSize = 12.sp,
+        modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
+    )
+}
+
+private fun backupLabel(name: String): String =
+    ConfigBackups.timestampOf(name)
+        ?.let { SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(it)) }
+        ?: name
+
 private fun EditorSessionState.copyForEditor(
     rawConfigValues: Map<String, String> = this.rawConfigValues,
     paramValues: Map<String, ParamValue> = this.paramValues,
@@ -505,14 +713,17 @@ private fun EditorSessionState.copyForEditor(
 )
 
 /**
- * 单个参数项
+ * 画质预设卡片：数据来自 20 份内置真实 preferences
  */
 @Composable
 private fun PresetCard(
-    onApplyPreset: (GraphicsPreset) -> Unit
+    isApplying: Boolean,
+    onApplyPreset: (PresetMetadata) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
-    var selectedPreset by remember { mutableStateOf(GraphicsPresets.all.first()) }
+    var selectedPresetId by rememberSaveable { mutableStateOf(PresetCatalog.all.first().id) }
+    val selectedPreset = PresetCatalog.all.firstOrNull { it.id == selectedPresetId }
+        ?: PresetCatalog.all.first()
 
     Card(
         modifier = Modifier
@@ -541,7 +752,7 @@ private fun PresetCard(
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        text = selectedPreset.name,
+                        text = "${selectedPreset.group.title} · ${selectedPreset.name}",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -551,23 +762,32 @@ private fun PresetCard(
                     onDismissRequest = { expanded = false },
                     modifier = Modifier.fillMaxWidth(0.92f)
                 ) {
-                    GraphicsPresets.all.forEach { preset ->
-                        DropdownMenuItem(
-                            text = {
-                                Column {
-                                    Text(text = preset.name, color = TextPrimary)
-                                    Text(
-                                        text = preset.description,
-                                        color = TextSecondary,
-                                        fontSize = 12.sp
-                                    )
-                                }
-                            },
-                            onClick = {
-                                selectedPreset = preset
-                                expanded = false
-                            }
+                    PresetGroup.entries.forEach { group ->
+                        Text(
+                            text = group.title,
+                            color = NeonCyan,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
                         )
+                        PresetCatalog.all.filter { it.group == group }.forEach { preset ->
+                            DropdownMenuItem(
+                                text = {
+                                    Column {
+                                        Text(text = preset.name, color = TextPrimary)
+                                        Text(
+                                            text = preset.description,
+                                            color = TextSecondary,
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    selectedPresetId = preset.id
+                                    expanded = false
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -577,9 +797,15 @@ private fun PresetCard(
                 color = TextSecondary,
                 fontSize = 13.sp
             )
+            Text(
+                text = "数值来自真实 preferences 文件，只修改画质字段及 Graphics/Performance 档位。",
+                color = TextDisabled,
+                fontSize = 12.sp
+            )
             Spacer(modifier = Modifier.height(12.dp))
             Button(
                 onClick = { onApplyPreset(selectedPreset) },
+                enabled = !isApplying,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
@@ -589,10 +815,18 @@ private fun PresetCard(
                 ),
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text(
-                    text = "应用预设",
-                    fontWeight = FontWeight.Bold
-                )
+                if (isApplying) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = DarkBackground,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text(
+                        text = "应用预设",
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }

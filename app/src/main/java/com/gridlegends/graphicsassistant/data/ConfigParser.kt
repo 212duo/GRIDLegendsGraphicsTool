@@ -8,6 +8,10 @@ object ConfigParser {
 
     fun parse(input: InputStream): Map<String, String> {
         val result = mutableMapOf<String, String>()
+        // Unscoped <value> entries are only used for files without the game's registry layout;
+        // otherwise BatterySaver or BenchmarkSetup values would masquerade as current values.
+        val unscopedValues = mutableMapOf<String, String>()
+        var hasRegistryValues = false
         val keyStack = mutableListOf<String>()
         val elementBlockStack = mutableListOf<ElementBlock>()
 
@@ -30,8 +34,13 @@ object ConfigParser {
                             if (key != null) {
                                 val text = parser.nextText().trim()
                                 if (text.isNotBlank()) {
-                                    shortKey(keyStack, key)?.let { result[it] = text }
-                                    result.putIfAbsent(key, text)
+                                    val scopedKey = shortKey(keyStack, key)
+                                    if (scopedKey != null) {
+                                        result[scopedKey] = text
+                                        hasRegistryValues = true
+                                    } else {
+                                        unscopedValues.putIfAbsent(key, text)
+                                    }
                                 }
                             }
                         }
@@ -86,6 +95,9 @@ object ConfigParser {
             eventType = parser.next()
         }
 
+        if (!hasRegistryValues) {
+            unscopedValues.forEach { (key, value) -> result.putIfAbsent(key, value) }
+        }
         return result
     }
 

@@ -291,7 +291,7 @@ object ParamDefinitions {
             section = ParamSection.POST_PROCESSING,
             options = switchOptions()
         )
-    )
+    ).map(::markExperimentalLevels)
 
     fun getParamsBySection(section: ParamSection): List<GraphicsParam> {
         return allParams.filter { it.section == section }
@@ -300,6 +300,16 @@ object ParamDefinitions {
     fun findByKey(key: String): GraphicsParam? {
         return allParams.find { it.key == key }
     }
+
+    /** None of the 20 bundled real presets uses level 4, so "极高" stays opt-in and flagged. */
+    private const val EXTREME_LEVEL = "4"
+
+    private fun markExperimentalLevels(param: GraphicsParam): GraphicsParam =
+        if (EXTREME_LEVEL in param.options) {
+            param.copy(experimentalValues = setOf(EXTREME_LEVEL))
+        } else {
+            param
+        }
 
     private fun switchOptions() = mapOf("0" to "关", "1" to "开")
 

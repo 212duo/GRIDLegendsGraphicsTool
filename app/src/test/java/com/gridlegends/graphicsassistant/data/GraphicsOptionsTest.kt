@@ -65,35 +65,6 @@ class GraphicsOptionsTest {
     }
 
     @Test
-    fun generatedPresetsSynchronizeRecommendedGraphicsOptions() {
-        val scalarGraphicsKeys = setOf(
-            "AmbientOcclusion",
-            "LightingQuality",
-            "Mirrors",
-            "Particles",
-            "Skidmarks",
-            "WeatherEffects"
-        )
-
-        GraphicsPresets.all.forEach { preset ->
-            assertTrue(
-                "${preset.name} is missing recommended keys: ${recommendedKeys - preset.values.keys}",
-                preset.values.keys.containsAll(recommendedKeys)
-            )
-            scalarGraphicsKeys.forEach { key ->
-                assertEquals(
-                    "${preset.name} has inconsistent $key",
-                    preset.values.getValue("Graphics/$key").substringBefore(',').trim(),
-                    preset.values[key]
-                )
-            }
-            assertEquals("0", preset.values["VerticalSync"])
-            assertEquals("0", preset.values["ReduceVisibleRain"])
-            assertFalse("${preset.name} should not contain MetalFX", preset.values.containsKey("Graphics/MetalFX"))
-        }
-    }
-
-    @Test
     fun parserAndWriterRoundTripRecommendedOptionsWithoutChangingUnmanagedValues() {
         val existingContent = """
             <?xml version="1.0" encoding="UTF-8"?>
